@@ -1,0 +1,193 @@
+import serial
+import sys
+import time
+import datetime
+import logWriter
+import scipy.interpolate
+from pylab import array, argsort
+
+class stepperCmd():
+    
+    def __init__(self, logger = None, debug=True):
+        """
+        Class to  control the elevation axis stepper 
+
+        """
+        self.port = '/dev/arduinoElAxis'
+        self.baudrate = 57600
+        self.debug=debug
+        self.lw = logger
+        prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        if logger== None:
+            self.lw = logWriter.logWriter(prefix, verbose=False)
+        else:
+            self.lw = logger
+        step = array([    0.,   100.,   200.,   300.,   400.,
+                         500.,   600.,   700.,   800.,   900.,  1000.,  1100.,  1200.,
+                         1300.,  1400.,  1500.,  1600.,  1700.,  1800.,  1900.,  2000.,
+                         2100.,  2200.,  2300.,  2400.,  2500.,  2600.,  2700.,  2800.,
+                         2900.,  3000.,  3100.,  3200.,  3300.,  3400.])
+        angle = array([ 93.75 ,  90.45,  87.8 ,  84.95,  82.15,
+                       79.45,  76.85,  74.3 ,  71.85,  69.4 ,  67.  ,  64.65,  62.25,
+                       60.05,  57.65,  55.35,  53.15,  50.85,  48.55,  46.2 ,  43.95,
+                       41.7 ,  39.3 ,  36.95,  34.5 ,  32.2 ,  29.6 ,  27.05,  24.6 ,
+                       21.8 ,  19.2 ,  16.55,  13.8 ,  11.15,   8.94])
+        q = argsort(angle)
+        self.step2Angle = scipy.interpolate.interp1d(step,angle,kind='linear')
+        self.angle2Step = scipy.interpolate.interp1d(angle[q],step[q],kind='linear')
+
+    def initPort(self):
+        try:
+            self.closePort()
+        except:
+            print ''
+        self.openPort()
+        self.getElPos()
+
+    def openPort(self):
+        
+        timeout = 1 #second
+        count = 0
+        try:
+            if (not hasattr(self, 'ser')) or (self.ser.isOpen() == False):
+                if self.debug: print "Opening port: %s"%self.port
+                self.ser = serial.Serial(self.port, self.baudrate) 
+                while((self.ser.inWaiting() < 0) or (count >= timeout )):
+                    time.sleep(.002)
+                    count = count+0.002
+                    self.lw.write(self.ser.readline())
+
+                return 0
+            else:
+                if self.debug: print "Serial port is already in use. Close before opening"
+        except:
+            self.lw.write('Cannot open Serial port %s at %d'%(self.port,self.baudrate))
+            return 2
+
+    def closePort(self):
+        try:
+            if (self.debug): print "Closing Port %s"%self.port
+            self.ser.flush()
+            self.ser.close()
+        except:
+            if (self.debug): print "%s port is already closed"%self.port
+        
+    def home(self):
+        self.stepMotor('-9999')
+
+    def slewMinEl(self):
+        self.slewEl(13.8)
+    
+    def slewEl(self, el):
+        """
+        Wrapper for stepMotor to allow us to send elevation commands 
+        with elevation angle instead of steps
+        
+        """
+        if el < 13.7 or el > 91.00:
+            if (self.debug): 
+                print "Requested elevation is outside elevation range [13.7-91 deg], doing Nothing"
+            self.lw.write('Requested elevation is outside of elevation range [`13.7-91 deg]')
+            return
+        steps = int(self.angle2Step(el))
+        if self.debug: print "Slewing to El=%2.2f deg = %s steps"%(el,str(steps))
+        self.stepMotor(str(steps))
+        
+    def stepMotor(self, Nsteps=''):
+        """
+        Nsteps is a string integer
+        sends the stepper motor a commands to move to absolute position Nsteps.
+        returns 0 if all is well
+        """
+        if type(Nsteps) != str:
+            self.lw.write("Nsteps must be a string of integer between 0 and 3200")
+            return 1
+
+        if int(Nsteps) > 3200 or int(Nsteps) < 0:
+            if int(Nsteps) != -9999:
+                self.lw.write("Nsteps must be between 0 and 3200. Review things")
+                return 1
+
+        if Nsteps != '-9999':
+            self.updateElPos()
+            dist = abs(int(Nsteps)-self.posS)
+            if self.debug: print self.posS, Nsteps, dist
+            waitTime = min(dist/220.,15.0)
+        else:
+            waitTime = 15.0
+            
+        if not self.ser.isOpen():
+            self.openPort()
+
+        # send command
+        self.ser.write(Nsteps)
+        if int(Nsteps) == -9999:
+            logMsg = 'Computer commanded Arduino to home'
+        else:
+            logMsg = 'Computer commanded Arduino to move to %s steps'%Nsteps
+        self.lw.write(logMsg)
+        time.sleep(.1)
+
+        ## check that the response matches with what we sent
+        #while(self.ser.inWaiting() < 0):
+        #    time.sleep(0.1)
+        #ret = self.ser.readline()
+        #if (ret.split()[0] == 'Moving') and (ret.split()[2] == Nsteps):
+        #    logMsg = 'Arduino confirmed stepper moving to %s steps'%Nsteps
+        #    print logMsg
+        #    self.logStepper(logMsg,logMsg)
+        #    
+        #elif (ret.split()[0] == 'Homing'):
+        #    logMsg = 'Arduino confirmed stepper is homing to steps = 0'
+        #    print logMsg
+        #    self.logStepper(logMsg,logMsg)
+        #elif (ret.split()[0] == 'You'):
+        #    logMsg = 'You hit the limit switch and rehomed, current position 0'
+        #    print logMsg
+        #    self.logStepper(logMsg,logMsg)
+        #else:
+        #    print "WARNING,WARNING,WARNING"
+        #    print "Response does not match what we expect. What to do"
+        #    print "Expected %s steps, got %s steps"%(Nsteps, ret)
+    
+        self.lw.write("Waiting %2.1f s for move to finish"%waitTime)
+        time.sleep(waitTime)
+        return 0
+
+    def logStepper(self,logMsg1,logMsg2=''):
+        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S.%f')
+        # log to a continuous file
+        f1 = open('/home/dbarkats/logs/allStepperCommands.txt','aw')
+        f1.write('%s %s\n'%(ts,logMsg1))
+        f1.close()
+
+        # log to a lastCommand file
+        if logMsg2 != '':
+            f2 = open('/home/dbarkats/logs/lastStepperCommand.txt','w')
+            f2.write("%s %s \n"%(ts,logMsg2))
+            f2.close()
+           
+    def updateElPos(self):
+        if datetime.datetime.now()-self.lastUpdate > datetime.timedelta(0,1,0):
+            if self.debug: print "Elpos is more than 1 sec old. Updating it."
+            self.getElPos()
+            
+    def getElPos(self):
+        try:
+            self.ser.write('p')
+            pos = self.ser.readline()
+            self.lastUpdate = datetime.datetime.now()
+            if 'EL_POS:' in pos:
+                pos = pos.split('EL_POS:')[1].split('\r')[0].strip()
+                pos = float(pos)
+                if self.debug: print datetime.datetime.now(), 'Nsteps: ', pos
+                self.posS = pos
+                self.posD = float(self.step2Angle(pos))
+                return self.posD
+        except:
+            pos = -9999.9999
+            self.posD = pos
+            self.posS = pos
+            return float(self.posD)
+
+    

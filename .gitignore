@@ -1,0 +1,9 @@
+*.pyc
+*~
+*.png
+src/wvr
+src/setChopAndState
+*.o
+src
+tftp/
+data_tmp/
