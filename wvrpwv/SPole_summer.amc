@@ -1,0 +1,149 @@
+# file SPole_summer.amc
+? 
+? usage: am SPole_summer.amc  fmin[GHz]  fmax[GHz]  zenith_angle[deg]  pwv[um]
+?
+# The vertical temperature, O3, and H2O profiles in this file are summer
+# (December - February) medians compiled from NOAA South Pole ozonesonde data
+# covering the years 1986 - 2004.  The data are courtesy of the NOAA Climate
+# Monitoring and Diagnostics Laboratory, Boulder, Colorado.
+#
+# The CMDL data archive may be accessed through
+#	http://www.cmdl.noaa.gov/info/ftpdata.html.
+# For background information, see J. Harris, et al., ch. 4 in NOAA CMDL
+# Summary Report #27, on the web at
+#	http://www.cmdl.noaa.gov/publications/annrpt27/ozonewater4.pdf.
+#
+# The median summer H2O profile has a total column density of 770 um pwv above
+# 680 mbar. It has been rescaled here to 1 um to permit specificiation of the
+# H2O column in precipitable microns on the am command line.
+
+f %1 GHz  %2 GHz  50.0 MHz
+output f GHz  tau  Tb K
+za %3 deg
+tol 0.0001
+PTmode Pbase Tbase
+
+Nscale h2o %4
+
+T0 2.7 K
+
+layer
+Pbase 0 mbar
+Tbase 281 K # so T(5 mb) = 264 K, sonde data extrapolated using CIRA-86 table
+
+layer
+Pbase 10 mbar
+Tbase 247 K
+column dry_air hydrostatic
+column o3 hydrostatic 4.8e-6
+
+layer
+Pbase 20 mbar
+Tbase 238 K
+column dry_air hydrostatic
+column o3 hydrostatic 3.7e-6
+
+layer
+Pbase 30 mbar
+Tbase 237 K
+column dry_air hydrostatic
+column o3 hydrostatic 3.3e-6
+
+layer
+Pbase 40 mbar
+Tbase 235 K
+column dry_air hydrostatic
+column o3 hydrostatic 2.9e-6
+
+layer
+Pbase 50 mbar
+Tbase 235 K
+column dry_air hydrostatic
+column o3 hydrostatic 3.0e-6
+
+layer
+Pbase 75 mbar
+Tbase 232 K
+column dry_air hydrostatic
+column o3 hydrostatic 2.2e-6
+
+layer
+Pbase 100 mbar
+Tbase 230 K
+column dry_air hydrostatic
+column o3 hydrostatic 1.40e-6
+
+layer
+Pbase 150 mbar
+Tbase 227 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.60e-6
+
+layer
+Pbase 200 mbar
+Tbase 226 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.30e-6
+
+layer
+Pbase 250 mbar
+Tbase 221 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.27e-6
+column h2o hydrostatic 2.021e-8
+
+layer
+Pbase 300 mbar
+Tbase 218 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.176e-6
+column h2o hydrostatic 5.390e-8
+
+layer
+Pbase 350 mbar
+Tbase 222 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.053e-6
+column h2o hydrostatic 7.681e-8
+
+layer
+Pbase 400 mbar
+Tbase 228.1 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.038e-6
+column h2o hydrostatic 1.334e-7
+
+layer
+Pbase 450 mbar
+Tbase 233 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.032e-6
+column h2o hydrostatic 2.196e-7
+
+layer
+Pbase 500 mbar
+Tbase 238 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.026e-6
+column h2o hydrostatic 3.274e-7
+
+layer
+Pbase 560 mbar
+Tbase 242 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.024e-6
+column h2o hydrostatic 4.851e-7
+
+layer
+Pbase 620 mbar
+Tbase 245 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.021e-6
+column h2o hydrostatic 6.549e-7
+
+layer
+Pbase 680 mbar
+Tbase 246 K
+column dry_air hydrostatic
+column o3 hydrostatic 0.023e-6
+column h2o hydrostatic 7.950e-7
