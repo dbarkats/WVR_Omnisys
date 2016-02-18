@@ -1,11 +1,16 @@
 import time
 import datetime
 import threading
+import socket
 
 class logWriter():
     def __init__(self, prefix = '',verbose=True):
-        dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
-        outfilename = dataDir+prefix+'_log.txt'
+        hostname = socket.gethostname()
+        if 'wvr1' not in hostname:
+            outfilename ='/dev/null'
+        else:
+            dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
+            outfilename = dataDir+prefix+'_log.txt'
         self.verbose = verbose
         self.lock = threading.Lock()
         self._outfp = open(outfilename, 'a')

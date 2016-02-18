@@ -1,0 +1,46 @@
+# Explanation of what the code does and notes
+
+am.py: library for fitting pwv from an atmosphere model  and measurements from an Omnisys 4 channel radiometer
+
+       class AmDrive
+       	     run_params:  
+	     	inputs: "fn" an am atmosphere profile file, "params": a list of parameters to feed to am. The params are often f0 (initial frequency), f1 ( ending frequency), za ( zenith angle), h20 (line of sight pwv).
+		outputs:  This will generate a temporary file ( in /tmp/) which then gets deleted. The file is read out and reads the output parameters that are requested in the input file, in this case, "fs" ( frequency), tau (opacity), tb ( sky temperature).
+	    called by: run_am
+		calls: 	/usr/local/bin/am	
+
+	class Layer: Parse and render a single layer in an am8.0 amc file
+	  called by: Layerfile
+	      calls: None
+
+	      
+	class Layerfile:  Read/write am-8.0 amc files with changing pressure/temperature/pwv
+	      inputs: 
+	      	     - init: "fn": input amc template. this is a template amc atmospheric profile which then gets modified based on different ground temperature and pressures
+	      	     - rescale_am_template: "outfn": an output am file. this is a temporary file which gets deleted after being read. "pground" and "tground": ground pressure and temperature used to scale the am_template.
+		     - run_am: "pground=680., tground=245., h2o=1000., el=55., f0=170., f1=200".  Based on the above input amc template, rescale it based on the given pground and tground,  and then based on this new file, re-run am using the given h20, elevation and frequency range. Then interpolate the resulting frequency (fs) and sky temperature (tb) at 10Mhz interval (default am is 100MHz) and provide them as output.
+	     
+	      outputs: "fs2" and "tb2": 10MHz interpolated frequency and sky temperature for given pground, tground, h20, el, f0, f1.
+	    called by:
+	        calls: Layer, Layerfile.rescale_am_template, Amdrive.run_params
+	      
+	      
+	class Radiometer
+		inputs:
+			- init: hard-wired wvr 4 bandcenters, bandwidths and LO center frequency
+			- integ_channel: given fs, tb, a channel center and BW, it integrates the sky temperature for that channel.
+			- observe: given an array of fs and tb, it produces 4 temperature corresponding to the 4 sky temperatures
+			- plot_meas:  given 4 temps, plots them on a standard plot
+
+		outputs: Radiometer.observe: 4 sky temps given fs and tb
+             called by :
+	         calls :
+
+
+	class FitAtmosphere:
+	      inputs:
+		- init: amc_path: an initial templace am atmospheric profile
+		- model:  given a pwv, el (and a default pground, tground), generate an fs, tb profile, and then run that through radiometer to generate a set of predicted 4 sky Tb.    
+		- fit_meas: given a 4-sky-temp measurement and elevation, and assuming a default pground and tground, this fits the 4-sky temps to a model and derives the pwv.
+
+######################################################################################

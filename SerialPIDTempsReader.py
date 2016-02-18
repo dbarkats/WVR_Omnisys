@@ -1,5 +1,6 @@
 import serial
 import sys
+import socket
 from pylab import *
 import time
 import logWriter
@@ -31,8 +32,12 @@ class SerialPIDTempsReader():
         self.setPoint = 19
         self.replotTime = 5
         self.fileNameRead = ''
-        self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
         self.debug=debug
+        hostname = socket.gethostname()
+        if 'harvard.edu' in hostname:
+            self.dataDir = 'wvr_data/'   #symlink to where the data is
+        else:
+            self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
   
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()
@@ -48,7 +53,6 @@ class SerialPIDTempsReader():
 
     def initVar(self):
         
-        if self.debug: print "Initializing all variables"
         # initialize temp variables
         self.time=[]
         self.t0 = []
@@ -136,7 +140,7 @@ class SerialPIDTempsReader():
             self.output.append(float(sline[14]))
 
     def readTempsFromFile(self, filename = ''):
-        f = open(filename,'r')
+        f = open(self.dataDir+filename,'r')
         lines = f.readlines()
         f.close()
         self.fileNameRead = filename
@@ -244,7 +248,9 @@ class SerialPIDTempsReader():
         return
         
     def savefig(self):
-        savefig(self.fileNameRead.split('.txt')[0]+'.png')
+        savefilename = self.fileNameRead.split('.txt')[0]+'.png'
+        print "Saving %s"%savefilename
+        savefig(savefilename)
 
     def plotTempsFromFile(self, filename = '', fignum=1):
         

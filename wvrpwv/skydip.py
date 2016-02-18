@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 
 import argparse
 
@@ -59,7 +60,7 @@ def main():
 
 	pred = np.zeros((npred,4))
 	for i in range(npred):
-		fs,eta,tb = sonde_amc.run_params([0,300,90.-el_pred[i]])
+		fs,eta,tb = sonde_amc.run_params([0,300,90.-el_pred[i],750])
 		pred[i] = radiometer.output(fs,tb)
 
 	colors = ['blue','green','red','purple']
