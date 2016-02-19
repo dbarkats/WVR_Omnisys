@@ -24,7 +24,7 @@ class wvrAnalysis():
             self.reducDir = '/home/dbarkats/WVR_Omnisys/reduc_plots/'
         prefix = time.strftime('%Y%m%d_%H%M%S')
         lw = logWriter.logWriter(prefix, verbose=False)
-        self.rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=True)
+        self.rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=True, debug=False)
 
     def readFastFile(self,filename):
         d = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")

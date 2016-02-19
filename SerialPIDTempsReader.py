@@ -140,12 +140,10 @@ class SerialPIDTempsReader():
             self.output.append(float(sline[14]))
 
     def readTempsFromFile(self, filename = ''):
-        f = open(self.dataDir+filename,'r')
-        lines = f.readlines()
-        f.close()
+
         self.fileNameRead = filename
         # TODO: figure out a way to read the datetime at the start
-        data = genfromtxt(filename,delimiter='')
+        data = genfromtxt(self.dataDir+filename,delimiter='')
         self.sample=data[:,1]
         self.t0 = data[:,2]
         self.input = data[:,3]
@@ -159,13 +157,17 @@ class SerialPIDTempsReader():
         self.t8 = data[:,11]
         self.t9 = data[:,12]
         self.t10 = data[:,13]
-        self.t11 = data[:,14]
-        self.output = data[:,15]
+        if shape(data)[1] ==15:
+            self.output = data[:,14]
+            self.t11=self.t10
+        else:
+            self.t11 = data[:,14]
+            self.output = data[:,15]
         
     def plotTemps(self, fignum=1):
 
         if (mod(self.counter,self.replotTime) == 0 & (self.plotFig)) | (self.fileNameRead !=''):
-            ion()
+            if self.debug: ion()
             figure(fignum, figsize=(12,10));clf()
             
             subpl=subplot(4,1,1)
@@ -258,5 +260,5 @@ class SerialPIDTempsReader():
         self.readTempsFromFile(filename)
         self.plotTemps(fignum)
         self.savefig()
-        raw_input('press Enter to exit')
+        # raw_input('press Enter to exit')
         
