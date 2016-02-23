@@ -50,16 +50,16 @@ class reduc_wvr_pager():
         '''
         '''
         self.make_fileList()
-        
-        wvrA = wvrAnalysis.wvrAnalysis()
-        now = datetime.datetime.now()
-        today = now.strftime('%Y%m%d');
-        todaym1= (now - datetime.timedelta(days=1)).strftime('%Y%m%d');
-        todaym2= (now - datetime.timedelta(days=2)).strftime('%Y%m%d');
-
         fileList = self.fileList
 
-        for f in fileList:
+        wvrA = wvrAnalysis.wvrAnalysis()
+
+        #now = datetime.datetime.now()
+        #today = now.strftime('%Y%m%d');
+        #todaym1= (now - datetime.timedelta(days=1)).strftime('%Y%m%d');
+        #todaym2= (now - datetime.timedelta(days=2)).strftime('%Y%m%d');
+
+        for f in fileList[100:]:
             print '\n'
             print f
             fastfile = f.replace('.tar.gz','_fast.txt')
@@ -72,9 +72,7 @@ class reduc_wvr_pager():
             if update:
                 if os.path.isfile(self.reducDir+fplotLoadTemps): 
                     print self.reducDir+fplotLoadTemp+"already exists. Skipping..."
-                    continue
-            
-            
+                    continue            
                     
             print "Making plots for %s"%slowfile
             wvrA.plotHk(slowfile, interactive=False)
