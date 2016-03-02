@@ -3,9 +3,8 @@
 import sys
 import os
 import signal 
+import time
 from optparse import OptionParser
-
-
 
 class serPort():
     
@@ -43,13 +42,14 @@ class serPort():
         print "restarting KeepSerPortAlive.py"
         cmd = 'cat %s > %s &'%(self.portname,self.tmpFilename)
         os.system(cmd)
-        
+        time.sleep(1)
+
     def checkRestartSerPort(self):
          pid = self.checkSerPortAlive()
          if pid == 0:
              print "Restarting KeepSerPortAlive.py"
              os.system('cat %s >> %s &'%(self.portname,self.tmpFilename))
-
+             time.sleep(1)
 
 if __name__ == '__main__':
     usage = '''
@@ -76,14 +76,14 @@ if __name__ == '__main__':
                       default=False,
                       help="-k will stop the current serial port monitoring")
 
-(options, args) = parser.parse_args()
-sp = serPort()
+    (options, args) = parser.parse_args()
+    sp = serPort()
 
-if options.checkOnly:
-    sp.checkRestartSerPort()
+    if options.checkOnly:
+        sp.checkRestartSerPort()
 
-if options.force:
-    sp.forceRestartSerPort()
+    if options.force:
+        sp.forceRestartSerPort()
 
-if options.kill:
-    sp.stopSerPort()
+    if options.kill:
+        sp.stopSerPort()

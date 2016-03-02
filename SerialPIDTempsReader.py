@@ -1,22 +1,25 @@
-#import serial
+import serial
 import sys
+import os
 import socket
 from pylab import *
 import time
 import logWriter
+import KeepSerPortAlive as k
+ksp = k.serPort()
 
-def tail_f(file):
-    interval = 1.0
+def tail_1(fileName):
+    interval = 1
+    cmd  = 'tail -1 %s'%fileName
+
+    try:
+        a  = os.popen(cmd).read()
+        time.sleep(interval)
+    except:
+       a = ''
     
-    while(True):
-        where = file.tell()
-        line =  file.readline()
-        if not line:
-            time.sleep(interval)
-            file.seek(where)
-        else:
-            yield line
-
+    return a
+        
 
 class SerialPIDTempsReader():
     
@@ -26,6 +29,7 @@ class SerialPIDTempsReader():
         and store temperatures from inside WVR enclosure to file
 
         """
+        self.method = 1
         self.port = '/dev/arduinoPidTemp'
         self.baudrate = 9600
         self.plotFig=plotFig
@@ -91,11 +95,19 @@ class SerialPIDTempsReader():
         self.f.close()
         
     def openSerialPort(self):
+        """
+        open serial port arduinoPIDTemp
+        only use is using self.method = 2
+        """
         if self.debug: print "Opening Serial Port %s"%self.port
         self.ser = serial.Serial(self.port, self.baudrate)
         self.ser.write('hello')
             
     def closeSerialPort(self):
+        """
+        close arduinoPIDTemp serial port
+        only use if using  self.method = 2
+        """
         if self.debug: print "Closing Serial Port"
         self.ser.flush()
         self.ser.close()
@@ -116,7 +128,10 @@ class SerialPIDTempsReader():
         
     def recordSerial(self):
         
-        line = self.ser.readline()
+        if self.method == 1:
+            line = tail_1('serialPortOut.txt')
+        else:
+            line = self.ser.readline()
         tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
         self.f.write('%s  %s'%(tstr,line))
         self.f.flush()
@@ -233,20 +248,23 @@ class SerialPIDTempsReader():
         
         self.initVar()
         self.openFile()
-        self.openSerialPort()
-        time.sleep(0.1)
-        self.checkSerialReady()
+        if self.method == 1:
+            ksp.checkRestartSerPort()
+        else:
+            self.openSerialPort()
+            time.sleep(0.1)
+            self.checkSerialReady()
+
         while(self.counter < Niter):
             try:
                 self.recordSerial()
                 if self.plotFig: self.plotTemps()
-
             except KeyboardInterrupt:
-                self.closeSerialPort()
+                if self.method==2 : self.closeSerialPort()
                 self.closeFile()
-                sys.exit(0)
+                return
         
-        self.closeSerialPort()
+        if self.method == 2: self.closeSerialPort()
         self.closeFile()
         return
         
@@ -261,5 +279,4 @@ class SerialPIDTempsReader():
         self.readTempsFromFile(filename)
         self.plotTemps(fignum)
         self.savefig()
-        # raw_input('press Enter to exit')
         
