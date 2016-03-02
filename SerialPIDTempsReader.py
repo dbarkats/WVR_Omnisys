@@ -1,4 +1,4 @@
-import serial
+#import serial
 import sys
 import socket
 from pylab import *
@@ -38,7 +38,8 @@ class SerialPIDTempsReader():
             self.dataDir = 'wvr_data/'   #symlink to where the data is
         else:
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
-  
+            import serial
+
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()
         else:
