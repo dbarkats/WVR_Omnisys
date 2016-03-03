@@ -42,7 +42,6 @@ class SerialPIDTempsReader():
             self.dataDir = 'wvr_data/'   #symlink to where the data is
         else:
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
-            import serial
 
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()
@@ -129,7 +128,7 @@ class SerialPIDTempsReader():
     def recordSerial(self):
         
         if self.method == 1:
-            line = tail_1('serialPortOut.txt')
+            line = tail_1(self.dataDir+'serialPortOut.txt')
         else:
             line = self.ser.readline()
         tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')

@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys
+import socket
 import os
 import signal 
 import time
@@ -11,6 +12,11 @@ class serPort():
     def __init__(self):
         self.portname = '/dev/arduinoPidTemp'
         self.tmpFilename = 'serialPortOut.txt'
+        hostname = socket.gethostname()
+        if 'harvard.edu' in hostname:
+            self.dataDir = 'wvr_data/'   #symlink to where the data is
+        else:
+            self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
         
     def checkSerPortAlive(self):
         cmd = "ps -x | grep 'cat %s' | grep -v grep  "%self.portname
@@ -40,7 +46,7 @@ class serPort():
         if pid != 0:
             self.killSerPort(pid)
         print "restarting KeepSerPortAlive.py"
-        cmd = 'cat %s > %s &'%(self.portname,self.tmpFilename)
+        cmd = 'cat %s > %s%s &'%(self.portname,self.dataDir,self.tmpFilename)
         os.system(cmd)
         time.sleep(1)
 
@@ -48,7 +54,7 @@ class serPort():
          pid = self.checkSerPortAlive()
          if pid == 0:
              print "Restarting KeepSerPortAlive.py"
-             os.system('cat %s >> %s &'%(self.portname,self.tmpFilename))
+             os.system('cat %s >> %s%s &'%(self.portname,self.dataDir, self.tmpFilename))
              time.sleep(1)
 
 if __name__ == '__main__':
