@@ -9,7 +9,7 @@ from optparse import OptionParser
 class serPort():
     
     def __init__(self):
-        self.portname = '/dev/cu.usbmodem1421'
+        self.portname = '/dev/arduinoPidTemp'
         self.tmpFilename = 'serialPortOut.txt'
         
     def checkSerPortAlive(self):
