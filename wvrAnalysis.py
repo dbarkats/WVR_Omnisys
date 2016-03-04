@@ -1,5 +1,3 @@
-
-
 import os, sys
 import socket
 from pylab import *
@@ -72,15 +70,18 @@ class wvrAnalysis():
             ioff()
         
         nfiles = size(fileList)
-        if nfiles > 1:
-            figsize= (36,12)
-        else:
-            figsize=(12,10)
         print "Loading %d PIDTemps files"%nfiles
         sample, ut, temps,input, output,fileName0 = self.readPIDTempsFile(fileList)
-        figure(fignum, figsize=figsize);clf()
+        if nfiles > 1:
+            figsize= (36,12)
+            trange=[ut[0].replace(hour=0,minute=0,second=0),
+                    ut[-1].replace(hour=23,minute=59,second=59)]
+        else:
+            figsize=(12,10)
+            trange=[ut[0].replace(minute=0),ut[-1].replace(minute=59)]
 
-        trange=[ut[0].replace(minute=0),ut[-1].replace(minute=59)]
+        figure(fignum, figsize=figsize)
+        clf()
 
         print "making plot"
         subpl=subplot(4,1,1)
@@ -138,7 +139,7 @@ class wvrAnalysis():
         #subpl.set_xticklabels([litem.get_text() for litem in subpl.get_xticklabels()], fontsize='small', rotation=30, ha='right')
         fname = fileName0.split('_')
         if nfiles > 1:
-            savefilename = '%s_%d_PIDTemps.png'%(fname[0],nfiles)
+            savefilename = '%s_24_PIDTemps.png'%fname[0]
         else:
             savefilename = fileName0.replace('.txt','.png')
         print "Saving %s"%savefilename
@@ -170,9 +171,11 @@ class wvrAnalysis():
             print "Reading %s"%filename
             # to deal with files at start of season with missing AZ/EL columns
             if 'AZ' in open(self.dataDir+filename,'r').readlines()[3]:
-                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
+                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, 
+                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
             else:
-                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
+                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, 
+                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
             d.append(e)
         d = concatenate(d,axis=0)
 
@@ -217,7 +220,7 @@ class wvrAnalysis():
         nfiles = size(fileList)
         if nfiles > 1:
             fname = fileList[0].split('_')
-            fileslow = '%s_%d.txt'%(fname[0],nfiles)
+            fileslow = '%s_24.txt'%fname[0]
             figsize=(36,12)
         else:
            fileslow = fileList.replace('.tar.gz','.txt')

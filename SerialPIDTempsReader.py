@@ -5,9 +5,9 @@ import socket
 from pylab import *
 import time
 import logWriter
-#import serial
-#import KeepSerPortAlive as k
-#ksp = k.serPort()
+import serial
+import KeepSerPortAlive as k
+ksp = k.serPort()
 
 def tail_1(fileName):
     interval = 1
@@ -30,7 +30,7 @@ class SerialPIDTempsReader():
         and store temperatures from inside WVR enclosure to file
 
         """
-        self.method = 1
+        self.method = 2
         self.port = '/dev/arduinoPidTemp'
         self.baudrate = 9600
         self.plotFig=plotFig
