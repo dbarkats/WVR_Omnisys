@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys
+import serial
 import socket
 import os
 import signal 
@@ -10,7 +11,8 @@ from optparse import OptionParser
 class serPort():
     
     def __init__(self):
-        self.portname = '/dev/cu.usbmodem1421'
+        self.portname = '/dev/arduinoPidTemp'
+        self.baudrate = 9600
         self.tmpFilename = 'serialPortOut.txt'
         hostname = socket.gethostname()
         if 'harvard.edu' in hostname:
@@ -19,14 +21,31 @@ class serPort():
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
         
     def checkSerPortAlive(self):
-        cmd = "ps -x | grep 'cat %s' | grep -v grep  "%self.portname
+        """
+        check if fileTmp is incrementing
+        """
+        #s0 = os.stat(self.dataDir+self.tmpFilename).st_size
+        #time.sleep(2)
+        #s1 = os.stat(self.dataDir+self.tmpFilename).st_size
+        #inc = s1-s0
+        
+        cmd = 'lsof %s%s'%(self.dataDir,self.tmpFilename)
         a = os.popen(cmd).read()
         if a != '':
-            pid = a.split()[0]
-            print "KeepSerportalive.py IS running. "
+            pid = a.split('\n')[1].split()[1]
+            print "KeepSerPortAlive.py IS running, PID: %s"%pid
         else:
             print "KeepSerPortAlive.py is NOT running. "
             pid = 0
+
+        #cmd = "ps -x | grep 'python ./KeepSerPortAlive' | grep -v grep "
+        #a = os.popen(cmd).read()
+        #if a != '':
+        #    pid = a.split()[0]
+        #    print "KeepSerportAlive.py IS running. "
+        #else:
+        #    print "KeepSerPortAlive.py is NOT running. "
+        #    pid = 0
 
         return  int(pid)
         
@@ -39,23 +58,31 @@ class serPort():
         pid = self.checkSerPortAlive()
         if pid != 0:
             self.killSerPort(pid)
-
+            
     def forceRestartSerPort(self):
         # check if SerPort is alive
         pid = self.checkSerPortAlive()
+        print pid
         if pid != 0:
             self.killSerPort(pid)
-        print "restarting KeepSerPortAlive.py"
-        cmd = 'cat %s > %s%s &'%(self.portname,self.dataDir,self.tmpFilename)
-        os.system(cmd)
-        time.sleep(1)
+            time.sleep(2)
+        self.MonitorSerPortIndef()
 
     def checkRestartSerPort(self):
          pid = self.checkSerPortAlive()
          if pid == 0:
-             print "Restarting KeepSerPortAlive.py"
-             os.system('cat %s >> %s%s &'%(self.portname,self.dataDir, self.tmpFilename))
-             time.sleep(1)
+             
+             self.MonitorSerPortIndef()
+
+    def MonitorSerPortIndef(self):
+        print "Restarting KeepSerPortAlive.py"
+        ser = serial.Serial(self.portname,self.baudrate)
+        f = open(self.dataDir+self.tmpFilename,'w',0)
+        while(1):
+            line = ser.readline()
+            f.write(line)
+            time.sleep(1)
+        
 
 if __name__ == '__main__':
     usage = '''
