@@ -1,12 +1,13 @@
-import serial
+
 import sys
 import os
 import socket
 from pylab import *
 import time
 import logWriter
-import KeepSerPortAlive as k
-ksp = k.serPort()
+#import serial
+#import KeepSerPortAlive as k
+#ksp = k.serPort()
 
 def tail_1(fileName):
     interval = 1
@@ -51,6 +52,7 @@ class SerialPIDTempsReader():
             self.lw = logWriter.logWriter(self.prefix, verbose=False)
         else:
             self.lw = logger
+            
 
     def getPrefixTimeStamp(self):
         return time.strftime('%Y%m%d_%H%M%S')
