@@ -12,6 +12,8 @@ if __name__ == '__main__':
     #options ....
     parser = OptionParser(usage=usage)
     
+    
+    
     parser.add_option("-p",
                       dest="plotFig",
                       action="store_true",
@@ -38,7 +40,7 @@ ts = time.strftime('%Y%m%d_%H%M%S')
 prefix=ts
 lw = logWriter.logWriter(prefix, options.verbose)
 
-rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=options.plotFig)
+rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=options.plotFig,debug=False)
 if options.fileNameRead == '':
     rsp.loopNtimes(3500)
 else:

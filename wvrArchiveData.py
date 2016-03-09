@@ -71,8 +71,9 @@ for datafile in filtlist:
     os.system("tar czf {} {}".format(archfile,' '.join(filegroup)));
     os.rename(archfile, os.path.join(ARCHDIR, archfile));
 
-
-os.chdir(oldpwd);
+os.system("tar czf wvrLog.tgz wvrLog.txt")
+os.rename('wvrLog.txt', os.path.join(ARCHDIR, 'wvrLog.txt'));
+os.chdir(oldpwd);x
 
 ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S');
 print "Stopping %s at %s"%(script,ts)

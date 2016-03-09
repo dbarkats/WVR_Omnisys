@@ -34,7 +34,7 @@ class SerialPIDTempsReader():
         and store temperatures from inside WVR enclosure to file
 
         """
-        self.method = 2
+        self.method = 1
         self.port = '/dev/arduinoPidTemp'
         self.baudrate = 9600
         self.plotFig=plotFig
@@ -253,9 +253,7 @@ class SerialPIDTempsReader():
         
         self.initVar()
         self.openFile()
-        if self.method == 1:
-            ksp.checkRestartSerPort()
-        else:
+        if self.method == 2:
             self.openSerialPort()
             time.sleep(0.1)
             self.checkSerialReady()
