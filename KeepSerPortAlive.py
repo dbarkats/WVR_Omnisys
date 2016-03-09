@@ -10,6 +10,7 @@ import socket
 import os
 import signal 
 import time
+import datetime
 from optparse import OptionParser
 
 class serPort():
@@ -32,14 +33,15 @@ class serPort():
         #time.sleep(2)
         #s1 = os.stat(self.dataDir+self.tmpFilename).st_size
         #inc = s1-s0
-        
+
+        tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
         cmd = 'lsof %s%s'%(self.dataDir,self.tmpFilename)
         a = os.popen(cmd).read()
         if a != '':
             pid = a.split('\n')[1].split()[1]
-            print "KeepSerPortAlive.py IS running, PID: %s"%pid
+            print "%s: KeepSerPortAlive.py IS running, PID: %s"%(tstr,pid)
         else:
-            print "KeepSerPortAlive.py is NOT running. "
+            print "%s: KeepSerPortAlive.py is NOT running. "%tstr
             pid = 0
 
         #cmd = "ps -x | grep 'python ./KeepSerPortAlive' | grep -v grep "
@@ -54,7 +56,8 @@ class serPort():
         return  int(pid)
         
     def killSerPort(self,pid):
-        print "Killing process ID %d to stop serial port monitoring"%pid
+        tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        print "%s: Killing process ID %d to stop serial port monitoring"%(tstr,pid)
         os.kill(pid,signal.SIGTERM)
 
     def stopSerPort(self):
@@ -75,11 +78,11 @@ class serPort():
     def checkRestartSerPort(self):
          pid = self.checkSerPortAlive()
          if pid == 0:
-             
              self.MonitorSerPortIndef()
 
     def MonitorSerPortIndef(self):
-        print "Restarting KeepSerPortAlive.py"
+        tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        print "%s: Restarting KeepSerPortAlive.py"%tstr
         ser = serial.Serial(self.portname,self.baudrate)
         f = open(self.dataDir+self.tmpFilename,'w',0)
         while(1):
