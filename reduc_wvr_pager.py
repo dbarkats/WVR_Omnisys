@@ -18,54 +18,19 @@ class reduc_wvr_pager():
         '''
         self.reducDir = 'wvr_reducplots/'
         self.dataDir = 'wvr_data/'
-        self.cutFileListPIDTemp = ['20160118_160001',
-                                   '20160119_020002',
-                                   '20160119_020127',
-                                   '20160119_060126',
-                                   '20160119_080002',
-                                   '20160220_025133',
-                                   '20160220_030002',
-                                   '20160220_030126',
-                                   '20160220_040002',
-                                   '20160220_060002',
-                                   '20160220_060127',
-                                   '20160303_150002',
-                                   '20160303_150127',                                   
-                                   '20160303_160001',
-                                   '20160303_170001',
-                                   '20160303_170126',
-                                   '20160303_180002',
-                                   '20160303_180126',
-                                   '20160303_190002',
-                                   '20160303_190127',
-                                   '20160303_200002',
-                                   '20160303_210002',
-                                   '20160303_210127',
-                                   '20160303_220001',
-                                   '20160303_220126',
-                                   '20160303_230002',
-                                   '20160303_230126',
-                                   '20160304_000002',
-                                   '20160304_010002',
-                                   '20160304_010127',
-                                   '20160304_020002',
-                                   '20160304_020126',
-                                   '20160304_040002']
 
-        self.cutFileListall = ['20151229_160002',
-                               '20160104_130113',
-                               '20160109_094814',
-                               '20160111_030548',
-                               '20160111_031031',
-                               '20160111_031816',
-                               '20160111_032317',
-                               '20160118_100126',
-                               '20160119_010126',
-                               '20160118_210126',
-                               '20160118_220127',
-                               '20160119_110127']                    
+    def getcutFileList(self):
+        print "loading cutFile list..."
+        d =  loadtxt('wvr_pipeline/wvr_cutFileListPIDTemps.txt',comments='#',delimiter=',',dtype='S15')
+        self.cutFileListPIDTemp = d.T[0]
+        d =  loadtxt('wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
+        self.cutFileListall = d.T[0]
+                       
 
     def makeFileListFromData(self,typ='*',start=None, end=None):
+        
+        self.getcutFileList()
+
         cwd = os.getcwd()
         os.chdir(self.dataDir)
         fileList = glob.glob('*%s*.gz'%typ)
@@ -82,7 +47,7 @@ class reduc_wvr_pager():
             fileList=filter(lambda f: (datetime.strptime(f.split('_')[0],'%Y%m%d') >= dstart) and
                        (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileList)
 
-        # cut file List to remove too small files defined in self.cutFileList
+        # cut file List to remove files defined in self.cutFileList
         for cutf in self.cutFileListall:
             fileList=filter(lambda f: cutf not in f, fileList)
 
@@ -105,13 +70,13 @@ class reduc_wvr_pager():
         return self.fileList
 
 
-    def make_reduc_plots(self,update=False,typ='*',start=None, end=None,dayOnly=True):
+    def make_reduc_plots(self,update=False,typ='*',start=None, end=None, do1hr=False,do24hr=True):
         '''
         '''
         wvrA = wvrAnalysis.wvrAnalysis()
         self.makeFileListFromData(typ=typ,start=start, end=end)
 
-        if not dayOnly:
+        if do1hr:
             for f in self.fileList:
                 print ''
                 print f
@@ -141,7 +106,7 @@ class reduc_wvr_pager():
             os.system('mv -f *.png %s'%self.reducDir)
         
         # make 24-hr plots
-        else:
+        if do24hr:
             for d in self.dayList:
                 day = datetime.strftime(d,'%Y%m%d')
                 fileListOneDay = concatenate((self.makeFileListFromData(typ='scanAz',start=day,end=day),

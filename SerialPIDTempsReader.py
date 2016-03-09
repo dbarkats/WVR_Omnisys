@@ -5,9 +5,13 @@ import socket
 from pylab import *
 import time
 import logWriter
-import serial
-import KeepSerPortAlive as k
-ksp = k.serPort()
+try:
+    import serial
+    import KeepSerPortAlive as k
+    ksp = k.serPort()
+except ImportError:
+    print "import serial and KeepSerPortAlive failed"
+    pass
 
 def tail_1(fileName):
     interval = 1

@@ -1,7 +1,11 @@
 #! /usr/bin/env python
 
 import sys
-import serial
+try:
+    import serial
+except ImportError:
+    print "import serial failed"
+    pass
 import socket
 import os
 import signal 
