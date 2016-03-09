@@ -1,0 +1,8 @@
+MAILTO=dbarkats@cfa.harvard.edu
+#00 0-23 * * *  /home/dbarkats/AWVR/WVRobserve_onehour.py
+#00,30 0-23 * * *  /home/dbarkats/Arduino/skyDip.py
+#00 0-23 * * *  /home/dbarkats/WVR_Omnisys/MonitorPIDTemps.py
+00 1,2,3,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23 * * *  nice -19 /home/dbarkats/WVR_Omnisys/wvrObserve1hr.py 2>&1
+00 0,4,8,12,16,20 * * * nice -19 /home/dbarkats/WVR_Omnisys/wvrNoise.py 2>&1
+10 * * * *   /home/dbarkats/WVR_Omnisys/wvrArchiveData.py 2>&1
+00 0 * * * /home/dbarkats/WVR_Omnisys/KeepSerPortAlive.py -f  2>&1
