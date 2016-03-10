@@ -72,7 +72,7 @@ for datafile in filtlist:
     os.rename(archfile, os.path.join(ARCHDIR, archfile));
 
 os.system("tar czf wvrLog.tgz wvrLog.txt")
-os.rename('wvrLog.txt', os.path.join(ARCHDIR, 'wvrLog.txt'));
+os.rename('wvrLog.tgz', os.path.join(ARCHDIR, 'wvrLog.tgz'));
 os.chdir(oldpwd);x
 
 ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S');
