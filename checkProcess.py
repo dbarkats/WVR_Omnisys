@@ -5,7 +5,7 @@ import datetime
 import signal
 from optparse import OptionParser
 
-def checkProcess(processName,debug=False):
+def checkProcess(processName,debug=False,dryrun=True):
     """
     given processName, check if it's present and if it was started in last hour, leave it, if it was started more than 1 hour ago, kill it
     processName should be 'wvrObserve1hr.py', or 'wvrNoise.py'
@@ -22,7 +22,8 @@ def checkProcess(processName,debug=False):
         print "no previous %s processes running, passing..."%processName
         pass
     else:
-        for res in results:
+        resList = results.split('\n')
+        for res in resList[:-1]:
             pid = res.split()[3]
             if debug:  print pid
             now = datetime.datetime.now()
