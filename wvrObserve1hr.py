@@ -88,6 +88,7 @@ lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -165,6 +166,7 @@ prefix = ts+'_scanAz'
 lw = logWriter.logWriter(prefix, options.verbose)
 
 print "Done with skyDip part, moving on to scanAz at %s"%(ts)
+sys.stdout.flush()
 
 lw.write("Updating wvrDaq object with az scan parameters")
 daq.setPrefix(prefix)
@@ -194,5 +196,5 @@ lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with scanAz part, finished with script at %s"%(ts)
-
+sys.stdout.flush()
 

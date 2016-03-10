@@ -1,0 +1,5 @@
+MAILTO=dbarkats@cfa.harvard.edu
+00 1,2,3,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23 * * *  nice -19 /home/dbarkats/WVR_Omnisys/wvrObserve1hr.py &>>  /home/dbarkats/WVR_Omnisys/data_tmp/wvrLog.txt
+00 0,4,8,12,16,20 * * * nice -19 /home/dbarkats/WVR_Omnisys/wvrNoise.py &>>  /home/dbarkats/WVR_Omnisys/data_tmp/wvrLog.txt
+10 * * * *   /home/dbarkats/WVR_Omnisys/wvrArchiveData.py 
+00 0 * * * /home/dbarkats/WVR_Omnisys/KeepSerPortAlive.py -c &>> /home/dbarkats/WVR_Omnisys/data_tmp/wvrLog.txt
