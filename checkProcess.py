@@ -18,7 +18,7 @@ def checkProcess(processName):
     # print pids
 
     if pids=='' : # no process running
-        print "no previous processes running, passing..."
+        print "no previous %s processes running, passing..."%processName
         pass
     else:
         pidList = pids.split('\n')
@@ -53,4 +53,4 @@ if __name__ == '__main__':
                       help="name of process to search and destroy if started more than 1 hr ago. Default: wvrObserve1hr.py")
 
     (options, args) = parser.parse_args()
-    checkProcess(options.procesName)
+    checkProcess(options.processName)
