@@ -1,7 +1,6 @@
 import os, sys
 import socket
 from pylab import *
-import SerialPIDTempsReader as sr
 import time
 import logWriter
 import glob
@@ -23,7 +22,6 @@ class wvrAnalysis():
             self.reducDir = '/home/dbarkats/WVR_Omnisys/reduc_plots/'
         prefix = time.strftime('%Y%m%d_%H%M%S')
         lw = logWriter.logWriter(prefix, verbose=False)
-        self.rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=True, debug=False)
         
     def readPIDTempsFile(self, fileList):
 

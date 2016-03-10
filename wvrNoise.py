@@ -61,6 +61,7 @@ lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -112,3 +113,4 @@ wvrAz.closeSerialPort()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with %s script, finished with script at %s"%(script,ts)
+sys.stdout.flush()
