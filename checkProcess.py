@@ -12,7 +12,7 @@ def checkProcess(processName,debug=False):
     """
 
     # check if a process called wvrObserve.py or wvrNoise.py is present
-    cmd = 'pgrep -f %s'%processName
+    cmd = 'pgrep -f %s |grep -v grep'%processName
     if debug: print cmd
     # cmd = 'pgrep -if "python KeepSerPortAlive.py" "python KeepSerPortAliveNoise"'
     pids=os.popen(cmd).read()
