@@ -25,7 +25,7 @@ class serPort():
             self.dataDir = 'wvr_data/'   #symlink to where the data is
         else:
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
-            
+
         self.portname = '/dev/arduinoPidTemp'
         #self.portname = '/dev/cu.usbmodem1421'
         self.baudrate = 9600
@@ -102,12 +102,10 @@ class serPort():
         tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
         print "%s: Restarting KeepSerPortAlive.py"%tstr
         ser = serial.Serial(self.portname,self.baudrate)
-        #f = open(self.dataDir+self.tmpFilename,'a',0)
         sys.stdout.flush()
         while(1):
             line = ser.readline()
             sline=line.split('\r')[0]
-            #f.write(line)
             self.serialPortLogger.info(sline)
             time.sleep(1)
 
