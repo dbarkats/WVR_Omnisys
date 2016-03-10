@@ -12,36 +12,31 @@ def checkProcess(processName,debug=False):
     """
 
     # check if a process called wvrObserve.py or wvrNoise.py is present
-    cmd = 'pgrep -f %s'%processName
+    cmd = 'ps -elf |grep  %s |grep -v grep'%processName
     if debug: print cmd
     # cmd = 'pgrep -if "python KeepSerPortAlive.py" "python KeepSerPortAliveNoise"'
-    pids=os.popen(cmd).read()
-    if debug: print pids
+    results=os.popen(cmd).read()
+    if debug: print results
 
-    if pids=='' : # no process running
+    if results=='' : # no process running
         print "no previous %s processes running, passing..."%processName
         pass
     else:
-        pidList = pids.split('\n')
-        if debug:  print pidList
-        now = datetime.datetime.now()
-        lasthour = (now-datetime.timedelta(hours=1)).hour
-        if debug: print "Now: %s"%now
-        for pid in pidList[:-1]:
+        for res in results:
+            pid = res.split()[3]
+            if debug:  print pid
+            now = datetime.datetime.now()
+            lasthour = (now-datetime.timedelta(hours=1)).hour
+            if debug: print "Now: %s"%now
             # get start times
-            a=os.popen('ps -p %s -wo pid,lstart,command,etime'%pid).read()    
-            if debug: print a
-            if a.split('\n')[1]=='':
-                print "no previous %s processes running, passing..."%processName
-                continue
-            hourStarted = a.split('\n')[1].split()[4][0:2]
+            hourStarted = res.split()[11][0:2]
             if int(hourStarted) == lasthour:
                 print "Killing the following process: %s because it was started in the last hour"%pid
-                print pid, a
+                print pid, res
                 os.kill(int(pid),signal.SIGTERM)
             else:
                 print "Leaving the following process: %s because it was started within last hour"%pid
-                print pid, a 
+                print pid, res
             
 
 if __name__ == '__main__':
