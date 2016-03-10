@@ -12,7 +12,7 @@ def checkProcess(processName,debug=False):
     """
 
     # check if a process called wvrObserve.py or wvrNoise.py is present
-    cmd = 'pgrep -f %s |grep -v grep'%processName
+    cmd = 'pgrep -f %s'%processName
     if debug: print cmd
     # cmd = 'pgrep -if "python KeepSerPortAlive.py" "python KeepSerPortAliveNoise"'
     pids=os.popen(cmd).read()
@@ -31,6 +31,9 @@ def checkProcess(processName,debug=False):
             # get start times
             a=os.popen('ps -p %s -wo pid,lstart,command,etime'%pid).read()    
             if debug: print a
+            if a.split('\n')[1]=='':
+                print "no previous %s processes running, passing..."%processName
+                continue
             hourStarted = a.split('\n')[1].split()[4][0:2]
             if int(hourStarted) == lasthour:
                 print "Killing the following process: %s because it was started in the last hour"%pid
