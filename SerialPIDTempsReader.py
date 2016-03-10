@@ -7,10 +7,8 @@ import time
 import logWriter
 try:
     import serial
-    import KeepSerPortAlive as k
-    ksp = k.serPort()
 except ImportError:
-    print "import serial and KeepSerPortAlive failed"
+    print "import serial failed"
     pass
 
 def tail_1(fileName):
