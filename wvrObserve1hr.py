@@ -41,7 +41,7 @@ if __name__ == '__main__':
                       dest="duration",
                       default = 3300,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
     
     parser.add_option("-e",
                       dest="elevation",
@@ -78,7 +78,6 @@ azScanningDuration = options.duration # in seconds
 azScanningSpeed = options.speed # in deg/s
 
 # Common variables are defined in wvrRegList
-
 #### START RUNNING skyDip part ###############
 
 ts = time.strftime('%Y%m%d_%H%M%S')
@@ -88,6 +87,10 @@ lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
+mypid = os.getpid()
+pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
+print "PID: %s, NICE level: %s "%(mypid, pri)
 sys.stdout.flush()
 
 lw.write("create wvrComm object")

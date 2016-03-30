@@ -1,3 +1,4 @@
+
 '''
 Scripts to generate reduc plots of the WVR data.
 
@@ -5,6 +6,8 @@ Scripts to generate reduc plots of the WVR data.
 
 import glob
 import sys
+import matplotlib as mpl
+mpl.use('Agg')
 import wvrAnalysis
 from pylab import *
 from datetime import datetime
@@ -16,17 +19,39 @@ class reduc_wvr_pager():
     def __init__(self):
         '''
         '''
-        self.reducDir = 'wvr_reducplots/'
-        self.dataDir = 'wvr_data/'
+        self.home = os.getenv('HOME')
+        self.reducDir = self.home+'/wvr_reducplots/'
+        self.dataDir = self.home+'/wvr_data/'
+        self.wxDir = '/n/bicepfs2/keck/wvr_products/keck_wx_reduced/'
 
     def getcutFileList(self):
         print "loading cutFile list..."
-        d =  loadtxt('wvr_pipeline/wvr_cutFileListPIDTemps.txt',comments='#',delimiter=',',dtype='S15')
+        d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListPIDTemps.txt',comments='#',delimiter=',',dtype='S15')
         self.cutFileListPIDTemp = d.T[0]
-        d =  loadtxt('wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
+        d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
         self.cutFileListall = d.T[0]
                        
 
+    def makeFileListFromWx(self, start=None, end=None):
+        cwd = os.getcwd()
+        os.chdir(self.wxDir)
+        fileListWx = glob.glob('keck_wx_*.txt')
+        os.chdir(cwd)
+
+        # filter fileList by dates
+        if start != None:
+            dstart=datetime.strptime(start,'%Y%m%d')
+            if end !=None: 
+                dend = datetime.strptime(end,'%Y%m%d')
+            else:
+                dend = datetime.now()            
+            fileListWx=filter(lambda f: 
+                              (datetime.strptime(f.split('_')[2],'%Y%m%d') >= dstart) and 
+                              (datetime.strptime(f.split('_')[2],'%Y%m%d') <= dend), fileListWx)
+        
+        return  fileListWx
+
+    
     def makeFileListFromData(self,typ='*',start=None, end=None):
         
         self.getcutFileList()
@@ -47,7 +72,7 @@ class reduc_wvr_pager():
             fileList=filter(lambda f: (datetime.strptime(f.split('_')[0],'%Y%m%d') >= dstart) and
                        (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileList)
 
-        # cut file List to remove files defined in self.cutFileList
+        # cut fileList to remove files defined in self.cutFileList
         for cutf in self.cutFileListall:
             fileList=filter(lambda f: cutf not in f, fileList)
 
@@ -68,7 +93,7 @@ class reduc_wvr_pager():
         self.dayList = sort(unique(dayList))
         
         return self.fileList
-
+ 
 
     def make_reduc_plots(self,update=False,typ='*',start=None, end=None, do1hr=False,do24hr=True):
         '''
@@ -109,8 +134,9 @@ class reduc_wvr_pager():
         if do24hr:
             for d in self.dayList:
                 day = datetime.strftime(d,'%Y%m%d')
-                fileListOneDay = concatenate((self.makeFileListFromData(typ='scanAz',start=day,end=day),
-                                              self.makeFileListFromData(typ='Noise',start=day,end=day)))
+                fileListOneDay = concatenate((
+                        self.makeFileListFromData(typ='scanAz',start=day,end=day),
+                        self.makeFileListFromData(typ='Noise',start=day,end=day)))
                 fileListOneDay = sort(fileListOneDay)
 
                 # if update:
@@ -127,7 +153,12 @@ class reduc_wvr_pager():
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
                 wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
-
+                
+                # make Wx plot
+                print "Making 24hr Wx plot for %s"%day
+                fileListWx = self.makeFileListFromWx(start=day,end=day)
+                wvrA.plotWx(fileListWx)
+                
             # move the plots to reduc_plots dir
             os.system('mv -f *.png %s'%self.reducDir)
         
@@ -136,6 +167,7 @@ class reduc_wvr_pager():
         dl = self.get_dateListFromPlots()
         self.make_dates_panel(dl)
         self.make_plot_panel(dl)
+        #self.update_plot_panel(dl)
         self.make_html(dl)
 
     def get_dateListFromPlots(self):
@@ -153,7 +185,6 @@ class reduc_wvr_pager():
         return sort(dateList)
     
     def make_html(self,dateList):
-        
         
         outdir = self.reducDir
         # make index
@@ -226,13 +257,34 @@ class reduc_wvr_pager():
         h.write('</html>\n');
         h.close();
             
-            
+        
+
     def make_plot_panel(self, dateList):
         
         outdir = self.reducDir
         fname='%s/wvr_plots.html'%outdir
         h=open(fname,'w');
         
+
+        h.write('<style type="text/css"> \n')
+        h.write('.view    { width: auto; }\n')
+        h.write('.viewfit { width: 100%; } \n')
+        h.write(' </style> \n')
+        h.write(' <script type="text/javascript"> \n')
+        h.write(' function togglefit() {  \n')
+        h.write(' this.classList.toggle("view"); \n')
+        h.write('this.classList.toggle("viewfit"); \n')
+        h.write(' } \n')
+        h.write(' window.addEventListener("load", function() { \n ')
+        h.write('var el = document.querySelectorAll(".viewfit"); \n')
+        h.write('for (var ii=0; ii<el.length; ++ii) {  \n ')
+        h.write('el[ii].addEventListener("click", togglefit); \n')
+        h.write (' } \n ')
+        h.write('        }); \n')
+        h.write(' </script> \n')
+
+        
+
         h.write('<SCRIPT LANGUAGE="JavaScript">\n');
         h.write('<!--\n\n');
         h.write('function set_plottype(plottype){\n');
