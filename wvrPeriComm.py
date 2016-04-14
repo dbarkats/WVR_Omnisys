@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import serial
 import time
 import datetime
@@ -13,6 +15,10 @@ MSG_ROTATE_ABS = '1pa%d\r\n'
 MSG_GETAZ = '1tp\r\n'
 MSG_STOP = '1st\r\n'
 MSG_TIMING = '1pt%d\r\n'
+
+MSG_ERROR1 = '1ts\r\n'
+MSG_ERROR2 = '1tb\r\n'
+MSG_ERROR3 = '1te\r\n'
 
 class wvrPeriComm():
     """
@@ -198,4 +204,28 @@ class wvrPeriComm():
             lw.write("could not acquire lock (wvrPeriComm.getAzPos)")
             pos = '-9999.9999'
         return float(pos)
+
+    def getError(self):
+        if self.lock.acquire():
+            try:
+                self.ser.write(MSG_ERROR1)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err1 = resp.split('1TS')[1].split('\r')[0]
+                self.ser.write(MSG_ERROR2)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err2 = resp.split('1TB')[1].split('\r')[0]
+                self.ser.write(MSG_ERROR3)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err3 = resp.split('1TE')[1].split('\r')[0]
+                if self.debug:
+                    print '%s, error code: %s, %s, %s'%(datetime.datetime.now(), err1, err2, err3)
+            except:
+                print "error"
+                pass
+            self.lock.release()
+        else:
+            lw.write("could not acquire lock (wvrPeriComm.getAzPos)")
 

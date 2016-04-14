@@ -18,6 +18,7 @@ import time
 import datetime
 import logWriter
 import threading
+import checkProcess
 from optparse import OptionParser
 
 if __name__ == '__main__':
@@ -35,9 +36,9 @@ if __name__ == '__main__':
 
     parser.add_option("-d",
                       dest="duration",
-                      default = 3400,
+                      default = 3200,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3200s")
 
     parser.add_option("-e",
                       dest="elevation",
@@ -51,6 +52,8 @@ if __name__ == '__main__':
 script = "wvrNoise.py"
 El = options.elevation # in deg
 duration = options.duration # in sec
+
+checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
 
 # Common variables are defined in wvrRegList
 ######################

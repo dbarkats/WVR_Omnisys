@@ -11,6 +11,7 @@ import datetime
 import SerialPIDTempsReader
 import threading
 import logWriter
+import checkProcess
 from optparse import OptionParser
 
 if __name__ == '__main__':
@@ -39,9 +40,9 @@ if __name__ == '__main__':
     
     parser.add_option("-d",
                       dest="duration",
-                      default = 3300,
+                      default = 3200,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3200s")
     
     parser.add_option("-e",
                       dest="elevation",
@@ -78,6 +79,8 @@ azScanningDuration = options.duration # in seconds
 azScanningSpeed = options.speed # in deg/s
 
 # Common variables are defined in wvrRegList
+
+checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
 
 #### START RUNNING skyDip part ###############
 
