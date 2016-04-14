@@ -39,7 +39,6 @@ for datafile in filelist:
     if fname not in archlist and not datafile.startswith(nowstamp):
         filtlist.append(datafile);
 
-
 # For each data file in the filtered list, we need to archive several files
 # together.
 os.chdir(TEMPDIR);
@@ -71,8 +70,8 @@ for datafile in filtlist:
     os.system("tar czf {} {}".format(archfile,' '.join(filegroup)));
     os.rename(archfile, os.path.join(ARCHDIR, archfile));
 
-os.system("tar czf 2016wvrLog.tgz wvrLog.txt")
-os.rename('2016wvrLog.tgz', os.path.join(ARCHDIR, '2016wvrLog.tgz'));
+os.system("tar czf 2016wvrLog.tar.gz wvrLog.txt")
+os.rename('2016wvrLog.tar.gz', os.path.join(ARCHDIR, '2016wvrLog.tar.gz'));
 os.chdir(oldpwd)
 
 ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S');
