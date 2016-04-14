@@ -124,7 +124,7 @@ class wvrAnalysis():
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
         grid(color='gray')
-        ylim([0,30])
+        ylim([-15,30])
         subpl.set_xticklabels('')
         subpl.set_xlim(trange)
         legend(['Op-amp','Gnd plate','heater air','24V PS','E pink foam',

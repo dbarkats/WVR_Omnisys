@@ -22,7 +22,7 @@ class reduc_wvr_pager():
         self.home = os.getenv('HOME')
         self.reducDir = self.home+'/wvr_reducplots/'
         self.dataDir = self.home+'/wvr_data/'
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/keck_wx_reduced/'
+        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
 
     def getcutFileList(self):
         print "loading cutFile list..."
@@ -35,7 +35,7 @@ class reduc_wvr_pager():
     def makeFileListFromWx(self, start=None, end=None):
         cwd = os.getcwd()
         os.chdir(self.wxDir)
-        fileListWx = glob.glob('keck_wx_*.txt')
+        fileListWx = glob.glob('*_wx_keck.txt')
         os.chdir(cwd)
 
         # filter fileList by dates
@@ -46,8 +46,8 @@ class reduc_wvr_pager():
             else:
                 dend = datetime.now()            
             fileListWx=filter(lambda f: 
-                              (datetime.strptime(f.split('_')[2],'%Y%m%d') >= dstart) and 
-                              (datetime.strptime(f.split('_')[2],'%Y%m%d') <= dend), fileListWx)
+                              (datetime.strptime(f.split('_')[0],'%Y%m%d') >= dstart) and 
+                              (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileListWx)
         
         return  fileListWx
 
@@ -155,9 +155,9 @@ class reduc_wvr_pager():
                 wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
                 
                 # make Wx plot
-                print "Making 24hr Wx plot for %s"%day
-                fileListWx = self.makeFileListFromWx(start=day,end=day)
-                wvrA.plotWx(fileListWx)
+                #print "Making 24hr Wx plot for %s"%day
+                #fileListWx = self.makeFileListFromWx(start=day,end=day)
+                #wvrA.plotWx(fileListWx)
                 
             # move the plots to reduc_plots dir
             os.system('mv -f *.png %s'%self.reducDir)
