@@ -36,9 +36,9 @@ if __name__ == '__main__':
 
     parser.add_option("-d",
                       dest="duration",
-                      default = 3200,
+                      default = 3300,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3200s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
 
     parser.add_option("-e",
                       dest="elevation",
@@ -56,6 +56,7 @@ duration = options.duration # in sec
 checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
 
 # Common variables are defined in wvrRegList
+
 ######################
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_Noise'
@@ -64,6 +65,11 @@ lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
+mypid = os.getpid()
+pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
+print "PID: %s, NICE level: %s "%(mypid, pri)
+sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -115,3 +121,4 @@ wvrAz.closeSerialPort()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with %s script, finished with script at %s"%(script,ts)
+sys.stdout.flush()

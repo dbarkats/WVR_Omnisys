@@ -7,6 +7,10 @@ import threading
 import logWriter
 from numpy import mod
 
+
+MSG_ERROR1 = '1ts\r\n'
+MSG_ERROR2 = '1tb\r\n'
+MSG_ERROR3 = '1te\r\n'
 MSG_RESET = '1rs\r\n'
 MSG_HOME = '1or\r\n'
 MSG_ROTSPEED = '1va%d\r\n'
@@ -29,6 +33,7 @@ class wvrPeriComm():
     def __init__(self, logger=None, debug=True):
 
         self.port = "/dev/newportAzAxis"
+        self.port = "/dev/ttyUSB0"
         self.baudrate = 57600
         self.debug=debug
         self.ser = serial.Serial()
@@ -161,6 +166,33 @@ class wvrPeriComm():
         self.lw.write("Slewing from %s to %s at 40deg/s;"%(str(currentPos), str(az)))
         self.startRotation(duration=timedist, rotspeed=slewSpeed)
         time.sleep(timedist + 1)
+
+    def getError(self):
+        if self.lock.acquire():
+            try:
+                self.ser.write(MSG_ERROR1)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err1 = resp.split('1TS')[1].split('\r')[0]
+                self.ser.write(MSG_ERROR2)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err2 = resp.split('1TB')[1].split('\r')[0]
+                self.ser.write(MSG_ERROR3)
+                time.sleep(0.010)
+                resp = self.ser.readline()
+                err3 = resp.split('1TE')[1].split('\r')[0]
+                if self.debug: 
+                    print '%s, error code: %s, %s, %s'%(datetime.datetime.now(), err1, err2, err3)
+            except:
+                print "error"
+                pass
+            self.lock.release()
+        else:
+            lw.write("could not acquire lock (wvrPeriComm.getError)")
+
+        
+                
     
     #def updateAzPos(self):
     #    if datetime.datetime.now()-self.lastUpdate > datetime.timedelta(0,1,0):

@@ -1,29 +1,29 @@
 import os, sys
 import socket
 from pylab import *
-import SerialPIDTempsReader as sr
 import time
+import math
 import logWriter
 import glob
-import shutil
 import analysisUtils as au
 
 class wvrAnalysis():
     
     def __init__(self):
-        
         """
         """
         hostname = socket.gethostname()
         if 'harvard.edu' in hostname:
-            self.dataDir = 'wvr_data/'   #symlink to where the data is
-            self.reducDir = 'wvr_reducplots'
+            self.home = os.getenv('HOME')
+            self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
+            self.reducDir = self.home+'/wvr_reducplots'
+            self.wxDir = '/n/bicepfs2/keck/wvr_products/keck_wx_reduced/'
         else:
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
             self.reducDir = '/home/dbarkats/WVR_Omnisys/reduc_plots/'
+
         prefix = time.strftime('%Y%m%d_%H%M%S')
         lw = logWriter.logWriter(prefix, verbose=False)
-        self.rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=True, debug=False)
         
     def readPIDTempsFile(self, fileList):
 
@@ -34,9 +34,11 @@ class wvrAnalysis():
             fl.append(f.replace('.tar.gz','_PIDTemps.txt'))
             
         d=[]
-        fileName0 = fl[0]
         for filename in fl:
-            data = genfromtxt(self.dataDir+filename,delimiter='',dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f')
+            print "Reading %s"%filename
+            data = genfromtxt(self.dataDir+filename,delimiter='',
+                              dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f',
+                              invalid_raise = False)
             d.append(data)
 
         d = concatenate(d,axis=0)
@@ -60,7 +62,8 @@ class wvrAnalysis():
         t11=d['f14']
         output=d['f15']
         temps=vstack([t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11]).T
-        return sample, utTime, temps, input, output, fileName0
+
+        return sample, utTime, temps, input, output
 
     def plotPIDTemps(self, fileList, fignum=1, inter=False):
 
@@ -71,28 +74,28 @@ class wvrAnalysis():
         
         nfiles = size(fileList)
         print "Loading %d PIDTemps files"%nfiles
-        sample, ut, temps,input, output,fileName0 = self.readPIDTempsFile(fileList)
+        sample, ut, temps,input, output = self.readPIDTempsFile(fileList)
+
+        fname = fileList[0].split('_')
         if nfiles > 1:
             figsize= (36,12)
+            savefilename= '%s_24.txt'%fname[0]
             trange=[ut[0].replace(hour=0,minute=0,second=0),
                     ut[-1].replace(hour=23,minute=59,second=59)]
         else:
             figsize=(12,10)
+            savefilename = '%s_%s.txt'%(fname[0],fname[1][0:2])
             trange=[ut[0].replace(minute=0),ut[-1].replace(minute=59)]
 
         figure(fignum, figsize=figsize)
         clf()
 
-        print "making plot"
         subpl=subplot(4,1,1)
-        #plot(ut,temps[:,0],',-')
-        #plot_date(ut,input,fmt='m-')
         plot_date(ut,au.smooth(input,20),fmt='g-')
         m = mean(temps[:,0])
         s = std(temps[:,0])
         axhline(19,color='r')
         grid(color='gray')
-        title(fileName0)
         ylabel("PID Temp [C]")
         ylim([18,20])
         subpl.set_xlim(trange)
@@ -137,17 +140,15 @@ class wvrAnalysis():
         
         # print [litem.get_text() for litem in subpl.get_xticklabels()]
         #subpl.set_xticklabels([litem.get_text() for litem in subpl.get_xticklabels()], fontsize='small', rotation=30, ha='right')
-        fname = fileName0.split('_')
-        if nfiles > 1:
-            savefilename = '%s_24_PIDTemps.png'%fname[0]
-        else:
-            savefilename = fileName0.replace('.txt','.png')
-        print "Saving %s"%savefilename
-        savefig(savefilename)
+
+        title = savefilename.replace('.txt','_PIDTemps')
+        suptitle(title,y=0.95, fontsize=24)
+        print "Saving %s.png"%title
+        savefig(title+'.png')
 
 
     def readFastFile(self,filename):
-        d = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
+        d = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
         self.tfast =  data['TIMEWVR']
         self.f = data
         
@@ -172,10 +173,12 @@ class wvrAnalysis():
             # to deal with files at start of season with missing AZ/EL columns
             if 'AZ' in open(self.dataDir+filename,'r').readlines()[3]:
                 e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, 
-                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
+                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",
+                               invalid_raise = False)
             else:
                 e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, 
-                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f")
+                               names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",
+                               invalid_raise = False)
             d.append(e)
         d = concatenate(d,axis=0)
 
@@ -218,13 +221,13 @@ class wvrAnalysis():
         trange=[utTime[0].replace(minute=0),utTime[-1].replace(minute=59)]
 
         nfiles = size(fileList)
+        fname = fileList[0].split('_')
         if nfiles > 1:
-            fname = fileList[0].split('_')
             fileslow = '%s_24.txt'%fname[0]
             figsize=(36,12)
         else:
-           fileslow = fileList.replace('.tar.gz','.txt')
-           figsize=(12,10)
+            fileslow = '%s_%s.txt'%(fname[0],fname[1][0:2])
+            figsize=(12,10)
 
         #plot hot and cold load Temps
         figure(1, figsize=figsize);clf()
@@ -272,7 +275,7 @@ class wvrAnalysis():
         sp.set_xlim(trange)
         grid()
         title = fileslow.replace('.txt','_LOAD_TEMPS')
-        suptitle(title)
+        suptitle(title,y=0.95, fontsize=24)
         print "Saving %s.png"%title
         savefig(title+'.png')
         
@@ -314,7 +317,7 @@ class wvrAnalysis():
         sp.set_xlim(trange)
         subplots_adjust(hspace=0.01)
         title = fileslow.replace('.txt','_WVR_TEMPS')
-        suptitle(title)
+        suptitle(title,y=0.95, fontsize=24)
         print "Saving %s.png"%title
         savefig(title+'.png')
 
@@ -353,6 +356,115 @@ class wvrAnalysis():
         sp.set_xlim(trange)
         xlabel('UT time')     
         title = fileslow.replace('.txt','_WVR_Calibrated_TSRC')
-        suptitle(title)      
+        suptitle(title,y=0.95, fontsize=24)      
+        print "Saving %s.png"%title
+        savefig(title+'.png')
+
+
+    def readWxFile(self,fileList):
+        """
+        Given a list of files, this will read all of them, and produce a concatenated output 
+        ready to be plotted.
+        """
+        fileList = au.aggregate(fileList)
+        
+        wx=[]
+        for filename in fileList:
+            print "Reading %s"%filename
+            e = genfromtxt(self.wxDir+filename, delimiter='',names=True, invalid_raise = False)
+            wx.append(e)
+
+        wx = concatenate(wx,axis=0)
+            
+        # convert MJD into UT date
+        utTime = []
+        for mjd in wx['mjd']:
+            ut=au.mjdToUT(mjd)
+            utTime.append(datetime.datetime.strptime(ut,'%Y-%m-%d %H:%M:%S UT'))
+
+        return (utTime, wx)
+    
+    def plotWx(self,fileList, inter=False):
+        """
+        Given a fileList of one or multiple files, 
+        will generate 1 plot.
+        """        
+        if inter:
+            ion()
+        else:
+            ioff()
+
+        nfiles = size(fileList)
+        print "Loading %d Wx files"%nfiles
+        utTime, wx= self.readWxFile(fileList)
+
+        fname = fileList[0].split('_')
+        expt = fname[0]
+        if nfiles > 1:
+            figsize= (36,12)
+            fileslow = '%s_24.txt'%(fname[2])
+            trange=[utTime[0].replace(hour=0,minute=0,second=0),
+                    utTime[-1].replace(hour=23,minute=59,second=59)]
+        else:
+            figsize=(12,10)
+            fileslow = '%s_%s.txt'%(fname[2],fname[3][0:2])
+            trange=[utTime[0].replace(minute=0),utTime[-1].replace(minute=59)]
+
+        # plot Wx variables.
+        figure(1, figsize=figsize);clf()
+        
+        sp = subplot(4,1,1)
+        plot_date(utTime, wx['tempC'],fmt='o-')
+        sp.set_xticklabels('')
+        sp.set_xlim(trange)
+        m = mean(wx['tempC'])
+        s = std(wx['tempC'])
+        grid(color='gray')
+        ylabel('Wx Temp [C]')
+        yl=ylim([-70,0])
+        xl=xlim()
+        cap = 'Temp: %2.1f +- %2.1fC'%(m,s)
+        text(0.9,0.9,cap,transform=sp.transAxes,fontsize=18)
+        
+        sp = subplot(4,1,2)
+        plot_date(utTime, wx['rh']*100,fmt='o')
+        sp.set_xticklabels('')
+        sp.set_xlim(trange)
+        m = mean(wx['rh']*100)
+        s = std(wx['rh']*100)
+        grid(color='gray')
+        ylabel('Wx RH [%]')
+        yl=ylim([0,100])
+        cap = 'Rh: %2.1f +- %2.1f %%'%(m,s)
+        text(0.9,0.9,cap,transform=sp.transAxes,fontsize=18)
+
+        sp = subplot(4,1,3)
+        plot_date(utTime, wx['wsms'],fmt='o')
+        sp.set_xticklabels('')
+        sp.set_xlim(trange)
+        m = mean(wx['wsms'])
+        s = std(wx['wsms'])
+        grid(color='gray')
+        ylabel('Wx Wind Speed [m/s]')
+        yl=ylim([-2,25])
+        cap = 'Wind Speed: %2.1f +- %2.1f m/s'%(m,s)
+        text(0.87,0.9,cap,transform=sp.transAxes,fontsize=18)
+
+        sp = subplot(4,1,4)
+        plot_date(utTime, wx['wddeg'],fmt='o')
+        sp.set_xlim(trange)
+        
+        m = mod(math.asin(mean(sin(wx['wddeg']*pi/180)))*180/pi,360)
+        s = math.asin(std(sin(wx['wddeg']*pi/180)))*180/pi
+        grid(color='gray')
+        ylabel('Wx Wind Direction [Deg]')
+        yl=ylim([-10,370])
+        cap = 'Dir: %3.1f +- %3.1fdeg'%(m,s)
+        text(0.9,0.9,cap,transform=sp.transAxes,fontsize=18)
+
+        subplots_adjust(hspace=0.01)
+        xlabel('UT time')     
+        title = fileslow.replace('.txt','_%s_wx'%expt)
+        suptitle(title,y=0.95, fontsize=24)      
         print "Saving %s.png"%title
         savefig(title+'.png')

@@ -40,9 +40,9 @@ if __name__ == '__main__':
     
     parser.add_option("-d",
                       dest="duration",
-                      default = 3200,
+                      default = 3300,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3200s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
     
     parser.add_option("-e",
                       dest="elevation",
@@ -91,6 +91,11 @@ lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
+mypid = os.getpid()
+pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
+print "PID: %s, NICE level: %s "%(mypid, pri)
+sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -168,6 +173,7 @@ prefix = ts+'_scanAz'
 lw = logWriter.logWriter(prefix, options.verbose)
 
 print "Done with skyDip part, moving on to scanAz at %s"%(ts)
+sys.stdout.flush()
 
 lw.write("Updating wvrDaq object with az scan parameters")
 daq.setPrefix(prefix)
@@ -197,5 +203,5 @@ lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with scanAz part, finished with script at %s"%(ts)
-
+sys.stdout.flush()
 
