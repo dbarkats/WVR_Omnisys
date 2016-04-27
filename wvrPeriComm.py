@@ -46,7 +46,6 @@ class wvrPeriComm():
         
     def openSerialPort(self):
         #if self.debug: print "Opening Serial port %s" %self.port
-        #if (not hasattr(self, 'ser')) or (self.ser.isOpen() == False):
         if self.lock.acquire():
             self.ser.port = self.port
             self.ser.baudrate = self.baudrate
@@ -66,22 +65,52 @@ class wvrPeriComm():
         else:
             print "could not acquire lock (wvrPeriComm.closeSerialPort)"
     
+    def command(self, cmd='1ts'):
+        """
+        generic function to send any command and read the results
+        cmd should be the address of the rotation stage (1) followed 
+        by 2 letter command
+        """
+        MSG_CMD = cmd+'\r\n'
+        if self.lock.acquire():
+            self.lw.write("Sending command %s "%MSG_CMD)
+            self.ser.write(MSG_CMD)
+            time.sleep(0.1)
+            resp = self.ser.read(self.ser.inWaiting())
+            if self.debug: print 'Response from %s: %s'%(cmd,resp)
+            self.lw.write(resp)
+            self.lock.release()
+        else:
+            print "could not acquire lock (wvrPeriComm.command)"
+            return
+        return resp
+
     def resetRotStage(self):
         if self.lock.acquire():
             self.lw.write("Resetting stage (wait 5s) ...")
             self.ser.write(MSG_RESET)
             self.lock.release()
             time.sleep(5)
+            self.getError()
         else:
             print "could not acquire lock (wvrPeriComm.resetRotStage)"
 
     def homeRotStage(self):
+        state = '1E'
+        timeout= 18.5
+        homeCount = 0
         if self.lock.acquire():
-            self.lw.write("Homing Rotation stage (wait 10s) ...")
+            self.lw.write("Homing Rotation stage (timeout=18.5 s) ...")
             self.ser.write(MSG_HOME)
             self.isHomed = True
             self.lock.release()
-            time.sleep(10)
+            while (state == '1E') or (homeCount >= timeout):
+               resp =  self.command('1ts')
+               resp= resp.split('1TS')[1].split('\r')[0]
+               state = resp[-2:]
+               time.sleep(1)
+               homeCount = homeCount + 1
+            self.getError()
         else:
             print "could not acquire lock (wvrPeriComm.homeRotStage)"
     
@@ -92,10 +121,10 @@ class wvrPeriComm():
     def setRotationVelocity(self, rotspeed=40):
         """
         set the rotation velocity. Units of rotspeed is 80deg/s
-        1RPM = 6deg/s
-        6.6RPM = 40deg/s
-        10RPM = 60deg/s
-        13.3 RPM = 80deg/s
+        1   RPM = 6deg/s
+        6.6 RPM = 40deg/s
+        10  RPM = 60deg/s
+        13.3RPM = 80deg/s
         Default scanning speed is 40deg/s 
         """
         if self.lock.acquire():
@@ -179,15 +208,12 @@ class wvrPeriComm():
                 if self.debug: 
                     print '%s, error code: %s, %s, %s'%(datetime.datetime.now(), err1, err2, err3)
             except:
-                print "error"
+                print "Error with wvrPeriComm.getError "
                 pass
             self.lock.release()
         else:
             lw.write("could not acquire lock (wvrPeriComm.getError)")
-
-        
                 
-    
     #def updateAzPos(self):
     #    if datetime.datetime.now()-self.lastUpdate > datetime.timedelta(0,1,0):
     #        if self.debug: print "Azpos is more than 1 sec old. Updating it."
