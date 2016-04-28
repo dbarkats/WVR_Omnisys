@@ -18,6 +18,8 @@ import time
 import datetime
 import logWriter
 import threading
+import os
+import checkProcess
 from optparse import OptionParser
 
 if __name__ == '__main__':
@@ -53,6 +55,8 @@ El = options.elevation # in deg
 duration = options.duration # in sec
 
 # Common variables are defined in wvrRegList
+
+checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
 
 ######################
 ts = time.strftime('%Y%m%d_%H%M%S')
