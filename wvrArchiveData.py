@@ -18,10 +18,12 @@ oldpwd = os.getcwd();
 # Also print to standard output
 ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S');
 print "Starting %s at %s"%(script,ts)
+sys.stdout.flush()
 
 # List all data files in the temporary directory.
 os.chdir(TEMPDIR);
-filelist = glob.glob('*_fast.txt');
+#filelist = glob.glob('*_fast.txt');
+filelist = glob.glob('*_log.txt');
 
 # Also build a list of the data which has already been archived.
 os.chdir(ARCHDIR);
@@ -35,7 +37,7 @@ os.chdir(oldpwd);
 filtlist = [];
 nowstamp = datetime.datetime.now().strftime('%Y%m%d_%H');
 for datafile in filelist:
-    fname = datafile.replace('_fast.txt','.tar.gz');
+    fname = datafile.replace('_log.txt','.tar.gz');
     if fname not in archlist and not datafile.startswith(nowstamp):
         filtlist.append(datafile);
 
@@ -44,8 +46,8 @@ for datafile in filelist:
 os.chdir(TEMPDIR);
 filegroup = []
 for datafile in filtlist:
-    archfile = datafile.replace('_fast.txt', '.tar.gz');
-    baseName = datafile.strip('_fast.txt')
+    archfile = datafile.replace('_log.txt', '.tar.gz');
+    baseName = datafile.strip('_log.txt')
     filegroup = glob.glob(baseName+'*.txt')
     print filegroup
     fileTypes = [n.split('_')[-1] for n in filegroup]
