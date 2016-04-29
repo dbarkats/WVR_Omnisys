@@ -54,6 +54,8 @@ script = "wvrNoise.py"
 El = options.elevation # in deg
 duration = options.duration # in sec
 
+checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
+
 # Common variables are defined in wvrRegList
 
 checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
