@@ -20,10 +20,6 @@ MSG_GETAZ = '1tp\r\n'
 MSG_STOP = '1st\r\n'
 MSG_TIMING = '1pt%d\r\n'
 
-MSG_ERROR1 = '1ts\r\n'
-MSG_ERROR2 = '1tb\r\n'
-MSG_ERROR3 = '1te\r\n'
-
 class wvrPeriComm():
     """
     Class for controlling and reading azimuth stage of the WVR periscope
@@ -110,7 +106,7 @@ class wvrPeriComm():
             self.ser.write(MSG_HOME)
             self.isHomed = True
             self.lock.release()
-            while (state == '1E') or (homeCount >= timeout):
+            while (state == '1E') or (homeCount <= timeout):
                resp =  self.command('1ts')
                resp= resp.split('1TS')[1].split('\r')[0]
                state = resp[-2:]

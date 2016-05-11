@@ -7,7 +7,7 @@ This script will save 1 set of files:
   - {date}_Noise_{ftype}.txt
 
 """
-import sys
+import os,sys
 from wvrRegList import *
 import SerialPIDTempsReader
 import wvrComm
@@ -18,7 +18,6 @@ import time
 import datetime
 import logWriter
 import threading
-import os
 import checkProcess
 from optparse import OptionParser
 
@@ -47,19 +46,17 @@ if __name__ == '__main__':
                       type= float,
                       help="-e, Elevation to do the observation at")
 
+
 (options, args) = parser.parse_args()
+
+checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
 
 #### VARIABLES #####
 script = "wvrNoise.py"
 El = options.elevation # in deg
 duration = options.duration # in sec
 
-checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
-
 # Common variables are defined in wvrRegList
-
-checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
-
 ######################
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_Noise'

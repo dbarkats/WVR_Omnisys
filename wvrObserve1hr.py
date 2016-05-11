@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import time
-import sys
+import os,sys
 from wvrRegList import *
 import wvrDaq
 import wvrComm
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     
     parser.add_option("-s",
                       dest="speed",
-                      default = 12.5,
+                      default = 12.0,
                       type= float,
                       help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 12.5 deg/s")
     
@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
 (options, args) = parser.parse_args()
 
+checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
 #### DEFINE VARIABLES #########
 script = "wvrObserve1hr.py"
 skyDipDuration =  60  # in seconds
@@ -79,8 +80,6 @@ azScanningDuration = options.duration # in seconds
 azScanningSpeed = options.speed # in deg/s
 
 # Common variables are defined in wvrRegList
-
-checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
 
 #### START RUNNING skyDip part ###############
 
