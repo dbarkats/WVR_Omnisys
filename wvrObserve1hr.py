@@ -108,8 +108,8 @@ wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
 lw.write("Resetting and Homing Az stage")
 wvrAz.stopRotation()
 wvrAz.resetAndHomeRotStage()
-lw.write("Slewing to az=%3.1f"%skyDipAz)
-wvrAz.slewAz(skyDipAz)
+#lw.write("Slewing to az=%3.1f"%skyDipAz)
+#wvrAz.slewAz(skyDipAz)
 
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
@@ -145,6 +145,9 @@ wvrEl.slewMinEl()
 wvrEl.home()
 #    5/ BACK TO ELEVATION OF OBSERVATION
 wvrEl.slewEl(scanEl)
+
+#lw.write("Slewing to az=0")
+#wvrAz.slewAz(0.0)
 
 #Check previous acquisition is done
 #while(daq.isProcessActive()):
