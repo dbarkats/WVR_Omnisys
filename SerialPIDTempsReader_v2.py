@@ -1,5 +1,4 @@
-import sys
-import os
+import sys,os
 import socket
 from pylab import *
 import time
@@ -103,7 +102,6 @@ class SerialPIDTempsReader():
         """
         if self.debug: print "Opening Serial Port %s"%self.port
         self.ser = serial.Serial(self.port, self.baudrate)
-        #  self.ser.write('hello')
             
     def closeSerialPort(self):
         """
