@@ -18,7 +18,7 @@ if __name__ == '__main__':
                       dest="plotFig",
                       action="store_true",
                       default=False,
-                      help=" -p option will plot a figure, default = False")
+                      help="-p option will plot a figure, default = False")
 
     parser.add_option("-f",
                       dest = "fileNameRead",
@@ -31,17 +31,28 @@ if __name__ == '__main__':
                       default=False,
                       help="-v option will print to Logging to screen in addition to file. Default = False")
 
+    parser.add_option("-d",
+                      dest="duration",
+                      default=3500,
+                      type=int,
+                      help="-d Duration in seconds of the observations. Defalt=3500s")
+
 (options, args) = parser.parse_args()
   
 if options.fileNameRead != '': 
     options.plotFig = True
 
+if options.verbose == True:
+    debug=True
+else:
+    debug=False
+
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix=ts
 lw = logWriter.logWriter(prefix, options.verbose)
 
-rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=options.plotFig,debug=False)
+rsp = sr.SerialPIDTempsReader(logger=lw,plotFig=options.plotFig,debug=debug)
 if options.fileNameRead == '':
-    rsp.loopNtimes(3500)
+    rsp.loopNtimes(options.duration)
 else:
     rsp.plotTempsFromFile(options.fileNameRead)
