@@ -40,6 +40,7 @@ if 1 :
     #from numpy.fft import fft
     #import fnmatch, pickle, traceback, copy as python_copy # needed for editIntents
     #import scipy as sp
+    import time as timeUtilities
     if (np.__version__ < '1.9'):
         import scipy.signal as spsig
         from scipy.interpolate import splev, splrep
@@ -50,7 +51,6 @@ if 0:
     import struct # needed for pngWidthHeight
     import glob
     import readscans as rs
-    import time as timeUtilities
     import datetime
     import tmUtils as tmu
     import compUtils  # used in class SQLD
@@ -171,3 +171,76 @@ def smooth(x, window_len=10, window='hanning'):
         w = getattr(np, window)(window_len)
     y = np.convolve(w/w.sum(), s, mode='same')
     return y[window_len-1:-window_len+1]
+
+
+def mjdToJD(MJD=None):
+    """
+    Converts an MJD value to JD.  Default = now.
+    """
+    if (MJD==None): MJD = getMJD()
+    JD = MJD + 2400000.5
+    return(JD)
+
+def mjdToUT(mjd=None, use_metool=True, prec=6):
+    """
+    Converts an MJD value to a UT date and time string
+    such as '2012-03-14 00:00:00 UT'
+    use_metool: whether or not to use the CASA measures tool if running from CASA.
+         This parameter is simply for testing the non-casa calculation.
+    """
+    if mjd==None:
+        mjdsec = getCurrentMJDSec()
+    else:
+        mjdsec = mjd*86400
+    utstring = mjdSecondsToMJDandUT(mjdsec, use_metool, prec=prec)[1]
+    return(utstring)
+
+def mjdSecondsToMJDandUT(mjdsec, use_metool=True, debug=False, prec=6):
+    """
+    Converts a value of MJD seconds into MJD, and into a UT date/time string.
+    prec: 6 means HH:MM:SS,  7 means HH:MM:SS.S
+    example: (56000.0, '2012-03-14 00:00:00 UT')
+    Caveat: only works for a scalar input value
+    Todd Hunter
+    """
+    if (os.getenv('CASAPATH') == None or use_metool==False):
+        mjd = mjdsec / 86400.
+        jd = mjdToJD(mjd)
+        trialUnixTime = 1200000000
+        diff  = ComputeJulianDayFromUnixTime(trialUnixTime) - jd
+        if (debug): print "first difference = %f days" % (diff)
+        trialUnixTime -= diff*86400
+        diff  = ComputeJulianDayFromUnixTime(trialUnixTime) - jd
+        if (debug): print "second difference = %f seconds" % (diff*86400)
+        trialUnixTime -= diff*86400
+        diff  = ComputeJulianDayFromUnixTime(trialUnixTime) - jd
+        if (debug): print "third difference = %f seconds" % (diff*86400)
+        # Convert unixtime to date string 
+        utstring = timeUtilities.strftime('%Y-%m-%d %H:%M:%S UT', 
+                       timeUtilities.gmtime(trialUnixTime))
+    else:
+        me = createCasaTool(metool)
+        today = me.epoch('utc','today')
+        mjd = np.array(mjdsec) / 86400.
+        today['m0']['value'] =  mjd
+        hhmmss = call_qa_time(today['m0'], prec=prec)
+        date = qa.splitdate(today['m0'])
+        utstring = "%s-%02d-%02d %s UT" % (date['year'],date['month'],date['monthday'],hhmmss)
+    return(mjd, utstring)
+
+def ComputeJulianDayFromUnixTime(seconds):
+    """
+    Converts a time expressed in unix time (seconds since Jan 1, 1970)
+    into Julian day number as a floating point value.
+    - Todd Hunter
+    """
+    [tm_year, tm_mon, tm_mday, tm_hour, tm_min, tm_sec, tm_wday, tm_yday, tm_isdst] = timeUtilities.gmtime(seconds)
+    if (tm_mon < 3):
+        tm_mon += 12
+        tm_year -= 1
+    UT = tm_hour + tm_min/60. + tm_sec/3600.
+    a =  floor(tm_year / 100.)
+    b = 2 - a + floor(a/4.)
+    day = tm_mday + UT/24.
+    jd  = floor(365.25*((tm_year)+4716)) + floor(30.6001*((tm_mon)+1))  + day + b - 1524.5
+    return(jd) 
