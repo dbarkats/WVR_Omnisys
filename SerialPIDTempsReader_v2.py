@@ -30,8 +30,9 @@ class SerialPIDTempsReader():
         and store temperatures from inside WVR enclosure to file
 
         """
-        self.method = 1
+        self.method = 2
         self.port = '/dev/arduinoPidTemp'
+        self.port = '/dev/ttyACM1'
         self.baudrate = 9600
         self.plotFig=plotFig
         self.setPoint = 19
@@ -101,7 +102,7 @@ class SerialPIDTempsReader():
         """
         if self.debug: print "Opening Serial Port %s"%self.port
         self.ser = serial.Serial(self.port, self.baudrate)
-                    
+            
     def closeSerialPort(self):
         """
         close arduinoPIDTemp serial port
@@ -249,7 +250,7 @@ class SerialPIDTempsReader():
         if self.method == 2:
             self.openSerialPort()
             time.sleep(0.1)
-            self.checkSerialReady()
+            # self.checkSerialReady()
 
         while(self.counter < Niter):
             try:
