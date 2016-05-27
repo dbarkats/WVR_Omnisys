@@ -95,7 +95,7 @@ class reduc_wvr_pager():
         return self.fileList
  
 
-    def make_reduc_plots(self,update=False,typ='*',start=None, end=None, do1hr=False,do24hr=True):
+    def make_reduc_plots(self,update=False, typ='*',start=None, end=None, do1hr=False,do24hr=True):
         '''
         '''
         wvrA = wvrAnalysis.wvrAnalysis()

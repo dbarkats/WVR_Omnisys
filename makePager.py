@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_option("-s",
                       dest = "start",
                       default=None,
-                      help="-s, date in YYMMDD format to start making the plots for. Default is today -2")
+                      help="-s, date in YYYYMMDD format to start making the plots for. Default is today -2")
 
     (options, args) = parser.parse_args()
     
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     
     if options.start == None:
         n = datetime.datetime.now()
-        nm2 = n -datetime.timedelta(days=2)
+        nm2 = n - datetime.timedelta(days=2)
         d = nm2.strftime('%Y%m%d')
     else:
         d = options.start

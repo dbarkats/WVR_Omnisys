@@ -17,7 +17,7 @@ class wvrAnalysis():
             self.home = os.getenv('HOME')
             self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
             self.reducDir = self.home+'/wvr_reducplots'
-            self.wxDir = '/n/bicepfs2/keck/wvr_products/keck_wx_reduced/'
+            self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
         else:
             self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
             self.reducDir = '/home/dbarkats/WVR_Omnisys/reduc_plots/'
@@ -218,16 +218,18 @@ class wvrAnalysis():
             ioff()
 
         utTime, tslow, d, az, el, tsrc = self.readSlowFile(fileList)
-        trange=[utTime[0].replace(minute=0),utTime[-1].replace(minute=59)]
-
+        
         nfiles = size(fileList)
         fname = fileList[0].split('_')
         if nfiles > 1:
             fileslow = '%s_24.txt'%fname[0]
             figsize=(36,12)
+            trange=[utTime[0].replace(hour=0,minute=0,second=0),
+                    utTime[-1].replace(hour=23,minute=59,second=59)]
         else:
             fileslow = '%s_%s.txt'%(fname[0],fname[1][0:2])
             figsize=(12,10)
+            trange=[utTime[0].replace(minute=0),utTime[-1].replace(minute=59)]
 
         #plot hot and cold load Temps
         figure(1, figsize=figsize);clf()
@@ -236,6 +238,7 @@ class wvrAnalysis():
         plot_date(utTime,d['HOT_SETP'],fmt='r-')
         m = mean(d['HOT_TEMP'])
         st = std(d['HOT_TEMP'])
+        print "hot mean/std:",m,st
         grid(color='gray')
         ylabel('HOT LOAD [K]')
         yl=ylim([m-8*st,m+8*st])
@@ -258,6 +261,7 @@ class wvrAnalysis():
         plot_date(utTime,d['COLD_SETP'],fmt='r-')
         m = mean(d['COLD_TEMP'])
         st = std(d['COLD_TEMP'])
+        print "cold mean/std:",m,st
         grid()
         yl=ylim([m-8*st,m+8*st])
         cap = 'Setp=%3.3f K, Mean=%3.3f K, sigm= %3.3f mK' \
