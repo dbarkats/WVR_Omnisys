@@ -32,7 +32,6 @@ class SerialPIDTempsReader():
         """
         self.method = 2
         self.port = '/dev/arduinoPidTemp'
-        self.port = '/dev/ttyACM1'
         self.baudrate = 9600
         self.plotFig=plotFig
         self.setPoint = 19

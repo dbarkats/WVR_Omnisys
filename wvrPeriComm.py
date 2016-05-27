@@ -7,7 +7,6 @@ import threading
 import logWriter
 from numpy import mod
 
-
 MSG_ERROR1 = '1ts\r\n'
 MSG_ERROR2 = '1tb\r\n'
 MSG_ERROR3 = '1te\r\n'
@@ -36,7 +35,7 @@ class wvrPeriComm():
         self.isHomed = False
         self.setLogger(logger)
         self.lock = threading.Lock()
-        self.azPos = 0.
+        self.azPos = -9999.9999
         self.openSerialPort()
 
     def setLogger(self,logger=None):

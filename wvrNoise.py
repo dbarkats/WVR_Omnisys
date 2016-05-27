@@ -46,8 +46,15 @@ if __name__ == '__main__':
                       type= float,
                       help="-e, Elevation to do the observation at")
 
+    parser.add_option("-w",
+                     dest="wvrOnly",
+                     action="store_false",
+                     default=True,
+                     help = "-w, used to only acquire wvr daq data and skips/ignors all commands to az/el axis or PIDTemp")
+
 
 (options, args) = parser.parse_args()
+wvrOnly = options.wvrOnly
 
 checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
 
@@ -83,18 +90,18 @@ else:
 
 lw.write("create wvrAz object")
 wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
-
-lw.write("Resetting and Homing Az stage")
-wvrAz.stopRotation()
-wvrAz.resetAndHomeRotStage()
-
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
 
-lw.write("Homing El stepper motor")
-wvrEl.initPort()
-wvrEl.home()
-wvrEl.slewEl(El)
+if wvrOnly:
+    lw.write("Resetting and Homing Az stage")
+    wvrAz.stopRotation()
+    wvrAz.resetAndHomeRotStage()
+
+    lw.write("Homing El stepper motor")
+    wvrEl.initPort()
+    wvrEl.home()
+    wvrEl.slewEl(El)
 
 lw.write("Create wvrDaq object")
 daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl, 
@@ -102,23 +109,25 @@ daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl,
                     slowfactor=slowfactor, comments="wvr Noise staring observation", 
                     prefix = prefix, debug=False)
 
-lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+if wvrOnly:
+    lw.write("create PIDTemps object")
+    rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 
-# Acquire data
-lw.write("start PIDtemps acquisition in the background")
-tPid = threading.Thread(target=rsp.loopNtimes,args=(duration,))
-tPid.start()
-time.sleep(1)
+    # Acquire PID Temp data
+    lw.write("start PIDtemps acquisition in the background")
+    tPid = threading.Thread(target=rsp.loopNtimes,args=(duration,))
+    tPid.start()
+    time.sleep(1)
 
 lw.write("start wvr data acquisition in the foreground")
 (nfast, nslow) = daq.recordData(duration)
 
 # Clean up
 lw.close()
-wvrEl.closePort()
-wvrAz.closeSerialPort()
+if wvrOnly:
+    wvrEl.closePort()
+    wvrAz.closeSerialPort()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
-print "Done with %s script, finished with script at %s"%(script,ts)
+print "Done with %s script at %s"%(script,ts)
 sys.stdout.flush()

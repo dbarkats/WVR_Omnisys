@@ -6,7 +6,7 @@ import socket
 class logWriter():
     def __init__(self, prefix = '',verbose=True):
         hostname = socket.gethostname()
-        if 'wvr1' not in hostname:
+        if 'wvr' not in hostname:
             outfilename ='/dev/null'
         else:
             dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'

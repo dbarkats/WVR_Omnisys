@@ -51,7 +51,7 @@ class wvrComm():
         self.port = 9734
         self.sock = None
         self.debug = debug
-        self.wvr1TftpServer = '192.168.168.232'
+        self.wvrTftpServer = '192.168.168.232'
         #Write FORMAT: empty char(1byte), address (unsigned short, 2bytes), data(array of 8 unsigned char bytes), serverIP (20byte char), filename(40byte char), msg (40byte char)
         fmt_w = 'B H 8s 20s 40s 40s' 
         self.packer = struct.Struct(fmt_w) 
@@ -67,7 +67,7 @@ class wvrComm():
         return x
         
     def connect(self, force=True):
-        if(self.debug): print 'Connecting to wvr %s port %s'% (self.host,self.port)
+        # if(self.debug): print 'Connecting to wvr %s port %s'% (self.host,self.port)
         try:
             if (force) or (not self.sock):
                 self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -95,8 +95,9 @@ class wvrComm():
         return unpacked_data
    
 
-    ######
-    # All command points
+    ################
+    # Command points
+    ################
 
     def setWvrState(self, mode, reset=(0,0,0,0)):
         """
@@ -162,7 +163,7 @@ class wvrComm():
             print "ERROR: You must specify a filename you want to download to the WVR"
             return
 
-        serverIP = self.wvr1TftpServer
+        serverIP = self.wvrTftpServer
         unpacked_data= self.sendMessageReadResponse(rid,'',serverIP,calFilename)
         if self.debug: print unpacked_data
         print self.getSwRev()
@@ -182,14 +183,15 @@ class wvrComm():
             sys.exit()
 
         rid = SET_CAL_UPLOAD[0]
-        serverIP = self.wvr1TftpServer
+        serverIP = self.wvrTftpServer
         now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
         calFile = 'NewCalFile_%s.txt'%now
         unpacked_data= self.sendMessageReadResponse(rid,'',serverIP,calFile)
         if self.debug: print unpacked_data
 
-    ######
+    #################
     #Monitoring points
+    #################
  
     def getSwRev(self):
         rid = GET_SW_REV[0]
@@ -239,14 +241,14 @@ class wvrComm():
         rid = GET_COLD_TEMP[0]
         unpacked_data= self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "COLD LOAD   SETPOINT: %3.3fK   MEASURED: %3.4fK"%(res[1],res[0])
+        if self.debug: print "COLD LOAD SETPOINT: %3.3fK\n          MEASURED: %3.4fK"%(res[1],res[0])
         return res
         
     def getHotTemp(self):
         rid = GET_HOT_TEMP[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "HOT LOAD  SETPOINT: %3.3fK   MEASURED: %3.4fK"%(res[1],res[0])
+        if self.debug: print "HOT LOAD SETPOINT: %3.3fK\n         MEASURED: %3.4fK"%(res[1],res[0])
         return res
 
     def getChopState(self):
@@ -289,7 +291,7 @@ class wvrComm():
                 chopV = 'Fixed'
             elif vel == 3:
                 chopV = '5.21 Hz'
-            print "Chop phase: %s, Chop velocity: %s" %(phase,chopV)
+            print "CHOP PHASE: %s,  VELOCITY: %s" %(phase,chopV)
         return (ph, vel)
 
 
@@ -298,7 +300,7 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid, '')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "CHOPPER PWM DUTY-CYCLE: %d (256 max) = %2.1f%%"%(res,pwmfrac)
+        if self.debug: print "CHOPPER PWM: %d (256 max) = %2.1f%%"%(res,pwmfrac)
         return pwmfrac
 
     def getChopPos(self):
@@ -306,7 +308,7 @@ class wvrComm():
         rid = GET_CHOP_POS[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = struct.unpack('8B',unpacked_data[2])
-        if self.debug: print "CHOPPER PRESENT POS:%d  ZERO-POSITION:%d"%(res[0],res[1])
+        if self.debug: print "CHOPPER POS:%d  ZERO-POSITION:%d"%(res[0],res[1])
         return res
 
     def getChopCurr(self):
@@ -321,7 +323,7 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "HOT LOAD PWM DUTY-CYCLE:%d (256 max) = %2.1f%%"%(res,pwmfrac)
+        if self.debug: print "HOT LOAD PWM:%d (256 max) = %2.1f%%"%(res,pwmfrac)
         return pwmfrac
 
     def getHotNtc(self):
@@ -336,7 +338,7 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "COLD LOAD PWM DUTY-CYCLE:%d (256 max) = %2.1f%%"%(res,pwmfrac)
+        if self.debug: print "COLD LOAD PWM:%d (256 max) = %2.1f%%"%(res,pwmfrac)
         return pwmfrac
 
     def getColdNtc(self):
@@ -350,42 +352,42 @@ class wvrComm():
         rid = GET_CTRL_12CURR[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "+12V RAIL CURRENT:%3.3f A"%(res)
+        if self.debug: print "+12V CURRENT:%3.3f A"%(res)
         return res
 
     def getCtrl6Curr(self):
         rid = GET_CTRL_6CURR[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "+6V RAIL CURRENT:%3.3f A"%(res)
+        if self.debug: print "+6V CURRENT:%3.3f A"%(res)
         return res
 
     def getCtrlM6Curr(self):
         rid = GET_CTRL_M6CURR[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "-6V RAIL CURRENT:%3.3f A"%(res)
+        if self.debug: print "-6V CURRENT:%3.3f A"%(res)
         return res
 
     def getCtrl12Volt(self):
         rid = GET_CTRL_12VOLT[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "+12V RAIL VOLTAGE:%3.3f V"%(res)
+        if self.debug: print "+12V VOLTAGE:%3.3f V"%(res)
         return res
 
     def getCtrl6Volt(self):
         rid = GET_CTRL_6VOLT[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "+6V RAIL VOLTAGE:%3.3f V"%(res)
+        if self.debug: print "+6V VOLTAGE:%3.3f V"%(res)
         return res
 
     def getCtrlM6Volt(self):
         rid = GET_CTRL_M6VOLT[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "-6V RAIL VOLTAGE:%3.3f V"%(res)
+        if self.debug: print "-6V VOLTAGE:%3.3f V"%(res)
         return res
 
     def getCtrlNtc(self):
@@ -399,7 +401,7 @@ class wvrComm():
         rid = GET_TP_TEMP[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "TOP PLATE TEMP   SETPOINT: %3.3fK   MEASURED: %3.4fK"%(res[1],res[0])
+        if self.debug: print "TOP PLATE SETPOINT: %3.3fK\n          MEASURED: %3.4fK"%(res[1],res[0])
         return res
 
     def getTpPwm(self):
@@ -407,14 +409,14 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "TOP PLATE PWM DUTY-CYCLE: %d (max 256) = %2.1f"%(res,pwmfrac)
+        if self.debug: print "TOP PLATE PWM: %d (max 256) = %2.1f"%(res,pwmfrac)
         return pwmfrac
 
     def getBeTemp(self):
         rid = GET_BE_TEMP[0]
         unpacked_data = self.sendMessageReadResponse(rid, '')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "BACKEND TEMP  SETPOINT: %3.3fK   MEASURED: %3.4fK"%(res[1],res[0])
+        if self.debug: print "BACKEND SETPOINT: %3.3fK\n        MEASURED: %3.4fK"%(res[1],res[0])
         return res
         
     def getBePwm(self):
@@ -422,7 +424,7 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "BE PWM DUTY-CYCLE: %d (256max) = %2.1f%%"%(res,pwmfrac)
+        if self.debug: print "BE PWM: %d (256max) = %2.1f%%"%(res,pwmfrac)
         return pwmfrac
 
     def getBeNtc(self):
@@ -492,7 +494,7 @@ class wvrComm():
         rid = GET_CS_TEMP[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "CS TEMP  SETPOINT: %3.3fK   MEASURED: %3.4fK"%(res[1],res[0])
+        if self.debug: print "CS SETPOINT: %3.3fK\n   MEASURED: %3.4fK"%(res[1],res[0])
         return res
         
     def getCsPwm(self):
@@ -500,42 +502,42 @@ class wvrComm():
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('B',unpacked_data[2])[0]
         pwmfrac = 100*res/256.
-        if self.debug: print "CS PWM DUTY-CYCLE: %d (256 max) = %2.1f%%"%(res,pwmfrac)
+        if self.debug: print "CS PWM: %d (256 max) = %2.1f%%"%(res,pwmfrac)
         return pwmfrac
 
     def getCsNtc(self):
         rid = GET_CS_NTC[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('H',unpacked_data[2])[0]
-        if self.debug: print "CS NTC TEMP:%d"%(res)
+        if self.debug: print "CS NTC TEMP: %d"%(res)
         return res
 
     def getLoFreq(self):
         rid = GET_LO_FREQ[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('I',unpacked_data[2])[0]
-        if self.debug: print "LO FREQ:%i KHz"%(res)
+        if self.debug: print "LO FREQ: %i kHz"%(res)
         return res
 
     def getLoBias0(self):
         rid = GET_LO_BIAS0[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "LO BIAS VOLTAGE 0 =%3.3f V"%(res)
+        if self.debug: print "LO BIAS VOLTAGE 0: %3.3f V"%(res)
         return res
 
     def getLoBias1(self):
         rid = GET_LO_BIAS1[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "LO BIAS VOLTAGE 1 = %3.3f V"%(res)
+        if self.debug: print "LO BIAS VOLTAGE 1: %3.3f V"%(res)
         return res
 
     def getLnaTemp(self):
         rid = GET_LNA_TEMP[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
         res = array.array('f',unpacked_data[2])[0]
-        if self.debug: print "LNA TEMP = %3.3f K"%(res)
+        if self.debug: print "LNA TEMP: %3.3f K"%(res)
         return res
         
     def getWvrPart(self):
@@ -610,7 +612,7 @@ class wvrComm():
 
     ##############
     # Additionnal function
-
+    ##############
     def rebootWvr(self):
         """
         Simple wrapper to reboot WVR
@@ -619,6 +621,16 @@ class wvrComm():
         print "Rebooted WVR... This will take 30s... Please wait..."
         time.sleep(30)
         if self.debug: print self.getWvrState()
+
+    def clearWvrAlarms(self):
+        """
+        when an alarm is present, use this function to 
+        clear the alarm. 
+        """
+        self.getWvrAlarms()
+        print "Clearing Alarms by resetting trip bit and mode to IDLE"
+        self.setWvrState(1,(0,0,1,0))
+        self.getWvrAlarms()
         
     def setWvrToOperation(self):
         """
@@ -683,11 +695,14 @@ class wvrComm():
         beT = self.getBeTemp()
         bePwm = self.getBePwm()
         lnaT = self.getLnaTemp()
+        chopState = self.getChopState()
+        chopPwm = self.getChopPwm()
+        Cchop = self.getChopCurr()
         V12=self.getCtrl12Volt()
-        V6  = self.getCtrl6Volt()
-        VM6 =self.getCtrlM6Volt()
         C12=self.getCtrl12Curr()
+        V6  = self.getCtrl6Volt()
         C6  = self.getCtrl6Curr()
+        VM6 =self.getCtrlM6Volt()
         CM6 =self.getCtrlM6Curr()
         lof = self.getLoFreq()
         lobias0 = self.getLoBias0()

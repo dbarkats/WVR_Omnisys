@@ -12,7 +12,7 @@ import traceback
 import logWriter
 
 # Update this if you make major changes to code.
-VERSION = 'version 2016-01-11'
+VERSION = 'version 2016-05-27'
 
 class wvrDaq():
     """
@@ -21,7 +21,7 @@ class wvrDaq():
 
     def __init__(self, logger=None, wvr=None, peri=None, elstep=None,
                  chan=[0,1,2,3], reg_fast=[], reg_slow=['HOT_TEMP','COLD_TEMP'], 
-                 reg_stat=['STATE','ALARMS'], cadence=0.01, slowfactor=10,
+                 reg_stat=['STATE','ALARMS'], cadence=0.010, slowfactor=20,
                  comments='', prefix = '', debug=True):
          
         self.setPrefix(prefix=prefix)
@@ -251,6 +251,7 @@ class wvrDaq():
             s = ([], [])
             while len(s[1]) == 0:
                 s = self.wvr.getMbuf(self.chan[i])
+                time.sleep(0.001)  # dB added May 2016 for wvr2
             data[i] = s
         if warn:
             # Check that all frames have same timestamp.
@@ -307,7 +308,6 @@ class wvrDaq():
             tcurr = tstart
             nfast = 0
             nslow = 0
-            #self.peri.openSerialPort()
             # Data acquisition loop.
             while not tcurr > (tstart + duration):
                 # System timestamp for this sample.
@@ -347,7 +347,6 @@ class wvrDaq():
         finally:
             fastfile.close()
             slowfile.close()
-            #self.peri.closeSerialPort()
             return ret
 
 
