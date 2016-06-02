@@ -73,5 +73,5 @@ lw.write("start wvr data acquisition in the foreground")
 lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
-print "Done with %s script, finished with script at %s"%(script,ts)
+print "Done with %s script at %s \n"%(script,ts)
 sys.stdout.flush()

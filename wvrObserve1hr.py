@@ -200,6 +200,6 @@ wvrEl.closePort()
 lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
-print "Done with scanAz part, finished with script at %s"%(ts)
+print "Done with scanAz part, finished with script at %s \n"%(ts)
 sys.stdout.flush()
 

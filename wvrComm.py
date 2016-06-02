@@ -628,7 +628,9 @@ class wvrComm():
         clear the alarm. 
         """
         self.getWvrAlarms()
+        print ""
         print "Clearing Alarms by resetting trip bit and mode to IDLE"
+        print ""
         self.setWvrState(1,(0,0,1,0))
         self.getWvrAlarms()
         
