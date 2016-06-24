@@ -141,7 +141,7 @@ class wvrComm():
         if 'tftpy' not in (os.popen('ps -elf | grep [t]ftpy_server.py')).read():
             print "WARNING: Run the tftp server before calling this command."
             print "        In a separate window, run:"
-            print "        - sudo tftpy_server.py -r ~/WVR_Omnisys/tftp/"
+            print "        - sudo tftpy_server.py -r ~/wvr_pipeline/tftp/"
             print "        - enter passwd"
             print "        - tftpy should be running"
             return 1
@@ -174,7 +174,7 @@ class wvrComm():
         upload the wvr calibration file to an tftp server.
         For this to work, a tftp server must be running.
         In a separate window, run:
-            - sudo tftpy_server.py -r ~/WVR_Omnisys/tftp/
+            - sudo tftpy_server.py -r ~/wvr_pipeline/tftp/
             - enter passwd
             - tftp server should be running
         """
@@ -307,8 +307,8 @@ class wvrComm():
         """Doesn't currently uppack data correctly."""
         rid = GET_CHOP_POS[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
-        res = struct.unpack('8B',unpacked_data[2])
-        if self.debug: print "CHOPPER POS:%d  ZERO-POSITION:%d"%(res[0],res[1])
+        res = struct.unpack('HHf',unpacked_data[2])
+        if self.debug: print "CHOPPER POS:%d  ZERO-POSITION:%d (out of 4096)"%(res[0],res[1])
         return res
 
     def getChopCurr(self):
@@ -568,7 +568,40 @@ class wvrComm():
         rid = GET_INT_TSRC0[0]+8*chan
         unpacked_data= self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "time: %3.7f  Tsrc0: %3.3fK"%(res[1],res[0])
+        if self.debug: print "time: %3.7f  Tsrc%d: %3.3fK"%(res[1],chan,res[0])
+        return res
+    
+    def getTcold(self,chan=0):
+        rid = GET_INT_COLD0[0]+8*chan
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ff',unpacked_data[2])
+        if self.debug: print "time: %3.7f  Tcold%d: %3.0f counts"%(res[1],chan,res[0])
+        return res
+    
+    def getThot(self,chan=0):
+        rid = GET_INT_HOT0[0]+8*chan
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ff',unpacked_data[2])
+        if self.debug: print "time: %3.7f  Thot%d: %3.0f counts"%(res[1],chan,res[0])
+        return res
+    
+    def getIntTime(self,phase='C'):
+        """
+        get actual integarion time  during last 48ms period for phase=X
+        phase can be: 'C', 'H','A', 'B'
+        """
+        if phase == 'C':
+            rid = GET_INT_TIMEC[0]
+        elif phase == 'H':
+            rid = GET_INT_TIMEH[0]
+        elif phase == 'A':
+            rid = GET_INT_TIMEA[0]
+        elif phase == 'B':
+            rid = GET_INT_TIMEB[0]   
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ii',unpacked_data[2])
+        time = res[0]
+        if self.debug: print "Time%s: %d, %3.5f ms"%(phase,time, time*31.25*1e-6)
         return res
             
     def getMbuf(self,chan=0):
@@ -617,6 +650,7 @@ class wvrComm():
         """
         Simple wrapper to reboot WVR
         """
+        if self.debug: print self.getWvrState()
         self.setWvrState(1,(0,1,0,0))
         print "Rebooted WVR... This will take 30s... Please wait..."
         time.sleep(30)

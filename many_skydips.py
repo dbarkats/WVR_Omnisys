@@ -16,5 +16,5 @@ azList = [   150., 150.,150.]
 for k in [0,1,2]:
     for az in azList:
         print k, az
-        cmd = '/home/dbarkats/WVR_Omnisys/wvrObserve1hr.py  -e 80 -z %d -o'%az
+        cmd = '/home/dbarkats/wvr_pipeline/wvrObserve1hr.py  -e 80 -z %d -o'%az
         os.system(cmd)

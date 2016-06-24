@@ -16,7 +16,7 @@ import wvrPeriComm
 import StepperCmd
 import wvrDaq
 import datetime
-import SerialPIDTempsReader
+import SerialPIDTempsReader_v2 as sr
 import threading
 import logWriter
 from pylab import *
@@ -81,7 +81,7 @@ else:
     sys.exit()
 
 lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 
 lw.write("create wvrAz object")
 wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)

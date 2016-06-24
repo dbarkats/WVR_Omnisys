@@ -38,11 +38,8 @@ class SerialPIDTempsReader():
         self.replotTime = 5
         self.fileNameRead = ''
         self.debug= debug
-        hostname = socket.gethostname()
-        if 'wvr' not in hostname:
-            self.dataDir = 'wvr_data/'   #symlink to where the data is
-        else:
-            self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
+        self.home = os.getenv('HOME')
+        self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
             
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()

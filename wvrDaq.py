@@ -36,7 +36,8 @@ class wvrDaq():
         self.cadence = cadence
         self.slowfactor = slowfactor
         self.comments = comments
-        self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
+        self.home = os.environ['HOME']
+        self.dataDir = self.home+'/wvr_data/'
         
     def setPrefix(self, prefix=''):
         if prefix == '':
@@ -316,7 +317,10 @@ class wvrDaq():
                 (tcurr, dvec) = self.acquireFastSample()
                 # Read encoder position.
                 az = self.peri.getAzPos()
+                #az = -9999.99
+                
                 el = self.wvrEl.getElPos()
+                #el = -9999.99
                 # Read fast registers.
                 fastvec = self.acquireHk(self.reg_fast)
                 # Combine into string.

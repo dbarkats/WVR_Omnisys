@@ -12,6 +12,7 @@ import wvrAnalysis
 from pylab import *
 from datetime import datetime
 import os
+import socket
 
 
 class reduc_wvr_pager():
@@ -19,6 +20,7 @@ class reduc_wvr_pager():
     def __init__(self):
         '''
         '''
+        self.host = socket.gethostname()
         self.home = os.getenv('HOME')
         self.reducDir = self.home+'/wvr_reducplots/'
         self.dataDir = self.home+'/wvr_data/'
@@ -31,7 +33,6 @@ class reduc_wvr_pager():
         d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
         self.cutFileListall = d.T[0]
                        
-
     def makeFileListFromWx(self, start=None, end=None):
         cwd = os.getcwd()
         os.chdir(self.wxDir)
@@ -55,10 +56,16 @@ class reduc_wvr_pager():
     def makeFileListFromData(self,typ='*',start=None, end=None):
         
         self.getcutFileList()
-
+        
         cwd = os.getcwd()
-        os.chdir(self.dataDir)
-        fileList = glob.glob('*%s*.gz'%typ)
+        if 'wvr' in self.host:
+            os.chdir('/data/wvr/')
+        else:
+            os.chdir(self.dataDir)
+           
+        fileList = glob.glob('*%s.tar.gz'%typ)
+        if '2016wvrLog.tar.gz' in fileList:
+            fileList.remove('2016wvrLog.tar.gz')
         dateList = []
         dayList = []
 
@@ -78,9 +85,10 @@ class reduc_wvr_pager():
 
         # untar files as necessary
         for f in fileList:
-            if not os.path.exists(f.replace('.tar.gz','_slow.txt')):
-                print "Untarring: %s"%f
-                os.system('tar -xzvf %s'%f) # untar files
+            if 'wvr' not in self.host:
+                if not os.path.exists(f.replace('.tar.gz','_slow.txt')):
+                    print "Untarring: %s"%f
+                    os.system('tar -xzvf %s'%f) # untar files
         
             dateList.append(datetime.strptime(f[0:15],'%Y%m%d_%H%M%S'))
             dayList.append(datetime.strptime(f[0:8],'%Y%m%d'))
@@ -99,7 +107,7 @@ class reduc_wvr_pager():
         '''
         '''
         wvrA = wvrAnalysis.wvrAnalysis()
-        self.makeFileListFromData(typ=typ,start=start, end=end)
+        self.makeFileListFromData(typ=typ, start=start, end=end)
 
         if do1hr:
             for f in self.fileList:
@@ -113,30 +121,28 @@ class reduc_wvr_pager():
                         print self.reducDir+plotfile+" already exists. Skipping..."
                         continue            
                     
-                print "Making WVR plots for %s"%f
-                wvrA.plotHk(f, inter=False)
+                print "Making Hk plots for %s"%f
+                wvrA.plotHk([f], inter=False)
 
                 print ''
-                if os.path.isfile(self.dataDir+PIDTempsfile):
-                    if f[0:15] in self.cutFileListPIDTemp:
-                        print "skipping %s, malformed data..."%f
-                        continue
-                    else:
-                        print "Making PIDTemps plot for %s"%f
-                        wvrA.plotPIDTemps(f, fignum=4,inter=False)
+                if f[0:15] in self.cutFileListPIDTemp:
+                    print "skipping %s, malformed data..."%f
+                    continue
                 else:
-                    print "WARNING: %s file missing. skipping PIDTemps plot"
-        
-            # move the plots to reduc_plots dir
-            os.system('mv -f *.png %s'%self.reducDir)
-        
+                    print "Making PIDTemps plot for %s"%f
+                    wvrA.plotPIDTemps(f, fignum=4,inter=False)
+
+                print "Making Fast plot for %s"%f
+                wvrA.plotFastData([f],inter=False )
+                
         # make 24-hr plots
         if do24hr:
             for d in self.dayList:
                 day = datetime.strftime(d,'%Y%m%d')
                 fileListOneDay = concatenate((
-                        self.makeFileListFromData(typ='scanAz',start=day,end=day),
-                        self.makeFileListFromData(typ='Noise',start=day,end=day)))
+                    self.makeFileListFromData(typ='scanAz',start=day,end=day),
+                    self.makeFileListFromData(typ='Noise',start=day,end=day),
+                    self.makeFileListFromData(typ='skyDip',start=day,end=day)))
                 fileListOneDay = sort(fileListOneDay)
 
                 # if update:
@@ -145,24 +151,24 @@ class reduc_wvr_pager():
                 #        print '%s already exists, skipping...'%plotfile
                 #        continue
 
-                print "Making 24hr WVR plot for %s"%day
+                print "Making 24hr Hk plot for %s"%day
                 wvrA.plotHk(fileListOneDay,inter=False)
+
+                print "Making 24hr Fast plot for %s"%day
+                wvrA.plotFastData(fileListOneDay,inter=False)
             
                 print "Making 24hr PIDTemps plot for %s"%day
                 for cutf in self.cutFileListPIDTemp:
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
                 wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
-                
+
                 # make Wx plot
                 #print "Making 24hr Wx plot for %s"%day
                 #fileListWx = self.makeFileListFromWx(start=day,end=day)
                 #wvrA.plotWx(fileListWx)
                 
-            # move the plots to reduc_plots dir
-            os.system('mv -f *.png %s'%self.reducDir)
         
-
     def updatePager(self):
         dl = self.get_dateListFromPlots()
         self.make_dates_panel(dl)

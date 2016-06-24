@@ -10,7 +10,8 @@ import glob
 import os
 import sys
 
-TEMPDIR = '/home/dbarkats/WVR_Omnisys/data_tmp';
+HOME = os.getenv('HOME')
+TEMPDIR = HOME+'/wvr_data/';
 ARCHDIR = '/data/wvr';
 script = 'wvrArchiveData.py'
 oldpwd = os.getcwd();

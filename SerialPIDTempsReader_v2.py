@@ -30,7 +30,11 @@ class SerialPIDTempsReader():
         and store temperatures from inside WVR enclosure to file
 
         """
-        self.method = 2
+        host = socket.gethostname()
+        if host == 'wvr2':
+            self.method = 2
+        else:
+            self.method = 1
         self.port = '/dev/arduinoPidTemp'
         self.baudrate = 9600
         self.plotFig=plotFig
@@ -38,12 +42,9 @@ class SerialPIDTempsReader():
         self.replotTime = 5
         self.fileNameRead = ''
         self.debug= debug
-        hostname = socket.gethostname()
-        if 'wvr' not in hostname:
-            self.dataDir = 'wvr_data/'   #symlink to where the data is
-        else:
-            self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
-            
+        self.home = os.getenv('HOME')
+        self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
+                    
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()
         else:
@@ -101,14 +102,16 @@ class SerialPIDTempsReader():
         """
         if self.debug: print "Opening Serial Port %s"%self.port
         self.ser = serial.Serial(self.port, self.baudrate)
-            
+        self.ser.flushInput()
+        self.ser.readline()
+        
     def closeSerialPort(self):
         """
         close arduinoPIDTemp serial port
         only use if using self.method = 2
         """
         if self.debug: print "Closing Serial Port"
-        self.ser.flush()
+        #self.ser.flush()
         self.ser.close()
 
     def checkSerialReady(self):

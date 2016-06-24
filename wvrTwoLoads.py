@@ -13,7 +13,6 @@ import time
 import sys
 from wvrRegList import *
 import wvrDaq
-import SerialPIDTempsReader
 import wvrComm
 import logWriter
 

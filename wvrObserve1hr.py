@@ -8,7 +8,7 @@ import wvrComm
 import wvrPeriComm
 import StepperCmd
 import datetime
-import SerialPIDTempsReader
+import SerialPIDTempsReader_v2 as sr
 import threading
 import logWriter
 import checkProcess
@@ -68,9 +68,16 @@ if __name__ == '__main__':
                       default = False,
                       help="-o, to do only the initial skyDip.")
 
+    parser.add_option("-c",
+                      dest='complete',
+                      action="store_true",
+                      default=False,
+                      help="-c, will store a complete set of registers for the slopw file instead of a limited set of registers. Useful for troubleshooting. Default=False")
+
 (options, args) = parser.parse_args()
 
 checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
+
 #### DEFINE VARIABLES #########
 script = "wvrObserve1hr.py"
 skyDipDuration =  60  # in seconds
@@ -80,7 +87,9 @@ azScanningDuration = options.duration # in seconds
 azScanningSpeed = options.speed # in deg/s
 
 # Common variables are defined in wvrRegList
-
+if options.complete:
+    reg_slow = reg_slow_complete
+    
 #### START RUNNING skyDip part ###############
 
 ts = time.strftime('%Y%m%d_%H%M%S')
@@ -124,7 +133,7 @@ daq = wvrDaq.wvrDaq(logger=lw,  wvr=wvrC, peri=wvrAz, elstep=wvrEl,
                     prefix = prefix, debug=False)
 
 lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 lw.write("start PIDtemps acquisition in the background")
 tPid1 = threading.Thread(target=rsp.loopNtimes,args=(skyDipDuration + 2,))
 tPid1.start()
@@ -150,9 +159,9 @@ wvrEl.slewEl(scanEl)
 #wvrAz.slewAz(0.0)
 
 #Check previous acquisition is done
-#while(daq.isProcessActive()):
-#    lw.write("Waiting for previous recordData to finish")
-#    time.sleep(10)
+while(daq.isProcessActive()):
+    lw.write("Waiting for previous recordData to finish")
+    time.sleep(10)
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
      time.sleep(10)
@@ -179,7 +188,7 @@ daq.setComments('Az Scanning Observation')
 daq.setLogger(lw)
 
 lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
+rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
 
 lw.write("start PIDtemps acquisition in the background")
 tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration+5,))

@@ -1,4 +1,4 @@
-# CONTROL/MONINTOR point name, address in hex, datasize in bytes
+# CONTROL/MONITOR point name, address in hex, datasize in bytes
 SET_WVR_STATE = (0x8010,2)
 SET_INT_SETS = (0x8130,4)
 SET_CHOP_VEL = (0x8150,1)
@@ -74,7 +74,7 @@ GET_BE_NTC = (0x230,2)
 GET_BE_BIAS0 = (0x0240,4)
 GET_BE_BIAS1 = (0x0248,4)
 GET_BE_BIAS2 = (0x0250,4)
-GET_BE_BIAS3 = (0x0248,4)
+GET_BE_BIAS3 = (0x0258,4)
 GET_BE_BW0 = (0x0260,4)
 GET_BE_BW1 = (0x0268,4)
 GET_BE_BW2 = (0x0270,4)

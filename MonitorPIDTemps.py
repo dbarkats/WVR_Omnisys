@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 from optparse import OptionParser
-import SerialPIDTempsReader as sr
+import SerialPIDTempsReader_v2 as sr
 import logWriter
 import time
 
