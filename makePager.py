@@ -16,16 +16,15 @@ if __name__ == '__main__':
                       help="-s, date in YYYYMMDD format to start making the plots for. Default is today -2")
 
     (options, args) = parser.parse_args()
-    
-
 
     rwp = rw.reduc_wvr_pager()
     
     if options.start == None:
         n = datetime.datetime.now()
         nm2 = n - datetime.timedelta(days=2)
-        d = nm2.strftime('%Y%m%d')
+        s = nm2.strftime('%Y%m%d')
     else:
-        d = options.start
-    rwp.make_reduc_plots(update=False,start=d,do24hr=True)
+        s = options.start
+    rwp.make_reduc_plots(update=False,start=s,do24hr=True)
+    rwp.make_reduc_plots(update=False,start=s,do1hr=True, do24hr=False)
     rwp.updatePager()

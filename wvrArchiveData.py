@@ -4,7 +4,6 @@
 # search for files in TEMPDIR and tar gz them into a single file
 # and move them over to /wvr/data
 
-#from __future__ import print_function
 import datetime
 import glob
 import os
@@ -24,7 +23,7 @@ sys.stdout.flush()
 # List all data files in the temporary directory.
 os.chdir(TEMPDIR);
 #filelist = glob.glob('*_fast.txt');
-filelist = glob.glob('*_log.txt');
+filelist = glob.glob('*_log.txt')
 
 # Also build a list of the data which has already been archived.
 os.chdir(ARCHDIR);
@@ -45,28 +44,23 @@ for datafile in filelist:
 # For each data file in the filtered list, we need to archive several files
 # together.
 os.chdir(TEMPDIR);
+
 filegroup = []
 for datafile in filtlist:
     archfile = datafile.replace('_log.txt', '.tar.gz');
     baseName = datafile.strip('_log.txt')
+    ymd = baseName.split('_')[0]
+    hms = baseName.split('_')[1]
     filegroup = glob.glob(baseName+'*.txt')
+    # add Wx file if it exists
+    wxFile = '%s_%s0000_Wx_Summit_NOAA.txt'%(ymd,hms[0:2])
+    if os.path.isfile(wxFile):
+        filegroup = filegroup+[wxFile]
     print filegroup
     fileTypes = [n.split('_')[-1] for n in filegroup]
     print "In %s filegroup, there are %d files: %s \n"\
         %(baseName, len(filegroup),', '.join(fileTypes))
 
-    # Verify that each necessary file exists
-    #if not os.path.exists(fastfile):
-    #    print('Fast file {} does not exist'.format(fastfile), file=sys.stderr);
-    #    #continue
-    #if not os.path.exists(slowfile):
-    #    print('Slow file {} does not exist'.format(slowfile), file=sys.stderr);
-    #    #continue
-    #if not os.path.exists(statfile):
-    #    print('Stat file {} does not exist'.format(statfile), file=sys.stderr);
-    #    #continue
-
-        
     # Archive the pieces together with tar, then move to the archive
     # directory.
     print "Writing archive {}...".format(archfile)

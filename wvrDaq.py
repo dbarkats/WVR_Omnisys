@@ -3,7 +3,6 @@ import os
 import time
 import datetime
 import numpy as np
-import threading
 import wvrComm
 import wvrPeriComm
 import StepperCmd
@@ -21,7 +20,7 @@ class wvrDaq():
 
     def __init__(self, logger=None, wvr=None, peri=None, elstep=None,
                  chan=[0,1,2,3], reg_fast=[], reg_slow=['HOT_TEMP','COLD_TEMP'], 
-                 reg_stat=['STATE','ALARMS'], cadence=0.010, slowfactor=20,
+                 reg_stat=['STATE','ALARMS'], cadence=0.001, slowfactor=20,
                  comments='', prefix = '', debug=True):
          
         self.setPrefix(prefix=prefix)
@@ -197,7 +196,6 @@ class wvrDaq():
         reg_dict['LNA_TEMP'] = (self.wvr.getLnaTemp, None, None, ('LNA_TEMP',))
 
         # AZ and EL -- only use for slow/stat file (az/el already included in fast file)
-        #reg_dict['ENC'] = (self.monitor.read_position, None, [0,1], ('AZ', 'EL'))
         reg_dict['AZ'] = (self.peri.monitorAzPos, None, None, ('AZ',))
         reg_dict['EL'] = (self.wvrEl.monitorElPos, None, None, ('EL',))
 
@@ -317,18 +315,16 @@ class wvrDaq():
                 (tcurr, dvec) = self.acquireFastSample()
                 # Read encoder position.
                 az = self.peri.getAzPos()
-                #az = -9999.99
-                
                 el = self.wvrEl.getElPos()
-                #el = -9999.99
+                
                 # Read fast registers.
-                fastvec = self.acquireHk(self.reg_fast)
+                #fastvec = self.acquireHk(self.reg_fast)
                 # Combine into string.
                 faststr = '{} {}'.format(tstr, tcurr)
                 faststr = faststr + (' {}' * len(dvec)).format(*dvec)
                 faststr = faststr + ' {}'.format(el)
                 faststr = faststr + ' {}'.format(az)
-                faststr = faststr + (' {}' * len(fastvec)).format(*fastvec)
+                #faststr = faststr + (' {}' * len(fastvec)).format(*fastvec)
                 fastfile.write(faststr + '\n')
                 # Acquire housekeeping data.
                 if np.mod(nfast, self.slowfactor) == 0:
@@ -353,7 +349,46 @@ class wvrDaq():
             slowfile.close()
             return ret
 
+    def fastLoopOneIter(self):
+        nfast=0
+        nslow=0
+        # Data acquisition loop.
+        # System timestamp for this sample.
+        tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        # Acquire WVR data for all channels.
+        (tcurr, dvec) = self.acquireFastSample()
+        # Read encoder position.
+        az = self.peri.getAzPos()
+        #az = -9999.99
+        
+        el = self.wvrEl.getElPos()
+        #el = -9999.99
 
+        # Acquire housekeeping data.
+        if np.mod(nfast, self.slowfactor) == 0:
+            # Get housekeeping data.
+            slowvec = self.acquireHk(self.reg_slow)
+            #self.writeSlowFile(slowfile, tstr, tcurr)
+            nslow += 1
+            
+        # Read fast registers.
+        # comment out, un-needed
+        # fastvec = self.acquireHk(self.reg_fast)
+
+        # Combine into string.
+        faststr = '{} {}'.format(tstr, tcurr)
+        faststr = faststr + (' {}' * len(dvec)).format(*dvec)
+        faststr = faststr + ' {}'.format(el)
+        faststr = faststr + ' {}'.format(az)
+        #faststr = faststr + (' {}' * len(fastvec)).format(*fastvec)
+        #fastfile.write(faststr + '\n')
+        # Increment counter.
+        nfast += 1
+        # Sleep for specified duration.
+        time.sleep(self.cadence)
+
+        return  tstr
+        
     def writeStatFile(self, filename):
         """
         Create stat file, record registers, then close file.

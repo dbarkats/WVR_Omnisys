@@ -40,9 +40,9 @@ if __name__ == '__main__':
     
     parser.add_option("-d",
                       dest="duration",
-                      default = 3300,
+                      default = 3400,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
     
     parser.add_option("-e",
                       dest="elevation",
@@ -54,7 +54,7 @@ if __name__ == '__main__':
                       dest="speed",
                       default = 12.0,
                       type= float,
-                      help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 12.5 deg/s")
+                      help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 12.0 deg/s")
     
     parser.add_option("-z",
                       dest="azimuth",
@@ -76,7 +76,8 @@ if __name__ == '__main__':
 
 (options, args) = parser.parse_args()
 
-checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
+#Checks that no other intances of wvrObserve1hr.py are already running
+checkProcess.checkProcess('wvrObserve1hr.py',force=True)
 
 #### DEFINE VARIABLES #########
 script = "wvrObserve1hr.py"
@@ -159,9 +160,9 @@ wvrEl.slewEl(scanEl)
 #wvrAz.slewAz(0.0)
 
 #Check previous acquisition is done
-while(daq.isProcessActive()):
-    lw.write("Waiting for previous recordData to finish")
-    time.sleep(10)
+#while(daq.isProcessActive()):
+#    lw.write("Waiting for previous recordData to finish")
+#    time.sleep(10)
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
      time.sleep(10)
@@ -191,7 +192,7 @@ lw.write("create PIDTemps object")
 rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
 
 lw.write("start PIDtemps acquisition in the background")
-tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration+5,))
+tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration,))
 tPid2.start()
 time.sleep(1)
 

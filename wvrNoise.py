@@ -36,9 +36,9 @@ if __name__ == '__main__':
 
     parser.add_option("-d",
                       dest="duration",
-                      default = 3300,
+                      default = 3400,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
 
     parser.add_option("-e",
                       dest="elevation",
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 (options, args) = parser.parse_args()
 wvrOnly = options.wvrOnly
 
-checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
+checkProcess.checkProcess('wvrNoise.py', force=True) #Checks that not other instances of wvrNoise.py are already running
 
 #### VARIABLES #####
 script = "wvrNoise.py"

@@ -14,7 +14,6 @@ from datetime import datetime
 import os
 import socket
 
-
 class reduc_wvr_pager():
 
     def __init__(self):
@@ -33,10 +32,14 @@ class reduc_wvr_pager():
         d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
         self.cutFileListall = d.T[0]
                        
-    def makeFileListFromWx(self, start=None, end=None):
+    def makeFileListFromWx(self, start=None, end=None, type='NOAA'):
         cwd = os.getcwd()
-        os.chdir(self.wxDir)
-        fileListWx = glob.glob('*_wx_keck.txt')
+        if type == 'keck':
+            os.chdir(self.wxDir)
+            fileListWx = glob.glob('*_wx_keck.txt')
+        elif type == 'NOAA':
+            os.chdir(self.dataDir)
+            fileListWx = glob.glob('*_Wx_Summit_NOAA.txt')
         os.chdir(cwd)
 
         # filter fileList by dates
@@ -51,7 +54,6 @@ class reduc_wvr_pager():
                               (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileListWx)
         
         return  fileListWx
-
     
     def makeFileListFromData(self,typ='*',start=None, end=None):
         
@@ -99,7 +101,7 @@ class reduc_wvr_pager():
         self.fileList = array(fileList)[sl]
         self.dateList = array(dateList)[sl]
         self.dayList = sort(unique(dayList))
-        
+
         return self.fileList
  
 
@@ -108,18 +110,22 @@ class reduc_wvr_pager():
         '''
         wvrA = wvrAnalysis.wvrAnalysis()
         self.makeFileListFromData(typ=typ, start=start, end=end)
-
+        
         if do1hr:
             for f in self.fileList:
+                
                 print ''
                 print f
                 plotfile = f.replace('.tar.gz','_LOAD_TEMPS.png')
                 PIDTempsfile = f.replace('.tar.gz','_PIDTemps.txt')
-                
+
                 if update:
                     if os.path.isfile(self.reducDir+plotfile): 
                         print self.reducDir+plotfile+" already exists. Skipping..."
                         continue            
+
+                print "Making Wx plots for %s"%wxfile
+                wvrA.plotWx([f], inter=False)
                     
                 print "Making Hk plots for %s"%f
                 wvrA.plotHk([f], inter=False)
@@ -132,8 +138,8 @@ class reduc_wvr_pager():
                     print "Making PIDTemps plot for %s"%f
                     wvrA.plotPIDTemps(f, fignum=4,inter=False)
 
-                print "Making Fast plot for %s"%f
-                wvrA.plotFastData([f],inter=False )
+                #print "Making Fast plot for %s"%f
+                #wvrA.plotFastData([f],inter=False )
                 
         # make 24-hr plots
         if do24hr:
@@ -151,22 +157,22 @@ class reduc_wvr_pager():
                 #        print '%s already exists, skipping...'%plotfile
                 #        continue
 
+                wxFileList = self.makeFileListFromWx(start=day,end=day)
+                if size(wxFileList) != 0:
+                    print "Making 24hr Wx plot for %s"%day
+                    wvrA.plotWx(wxFileList,inter=False)
+                
                 print "Making 24hr Hk plot for %s"%day
                 wvrA.plotHk(fileListOneDay,inter=False)
 
-                print "Making 24hr Fast plot for %s"%day
-                wvrA.plotFastData(fileListOneDay,inter=False)
+                #print "Making 24hr Fast plot for %s"%day
+                #wvrA.plotFastData(fileListOneDay,inter=False)
             
                 print "Making 24hr PIDTemps plot for %s"%day
                 for cutf in self.cutFileListPIDTemp:
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
                 wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
-
-                # make Wx plot
-                #print "Making 24hr Wx plot for %s"%day
-                #fileListWx = self.makeFileListFromWx(start=day,end=day)
-                #wvrA.plotWx(fileListWx)
                 
         
     def updatePager(self):

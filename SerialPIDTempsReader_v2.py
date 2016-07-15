@@ -33,13 +33,17 @@ class SerialPIDTempsReader():
         host = socket.gethostname()
         if host == 'wvr2':
             self.method = 2
-        else:
+            self.loc = 'summit'
+        elif host == 'wvr1':
             self.method = 1
+            self.loc = 'pole'
+        else:
+            self.method = 2
         self.port = '/dev/arduinoPidTemp'
         self.baudrate = 9600
         self.plotFig=plotFig
         self.setPoint = 19
-        self.replotTime = 5
+        self.replotTime = 10
         self.fileNameRead = ''
         self.debug= debug
         self.home = os.getenv('HOME')
@@ -58,9 +62,7 @@ class SerialPIDTempsReader():
         return time.strftime('%Y%m%d_%H%M%S')
 
     def initVar(self):
-        
         # initialize temp variables
-        self.time=[]
         self.t0 = []
         self.t1 = []
         self.t2 = []
@@ -77,6 +79,7 @@ class SerialPIDTempsReader():
         self.sample = []
         self.output = []
         self.counter = 0
+        self.tstart = datetime.datetime.now()
         
     def setFileNameWrite(self):
         """
@@ -115,6 +118,10 @@ class SerialPIDTempsReader():
         self.ser.close()
 
     def checkSerialReady(self):
+        """
+        Check that serial port is ready by wiaitng for special message
+        only use if self.method=1
+        """
         self.lw.write("Checking if port %s is Ready"%self.port)
         while(1):
             line = self.ser.readline()
@@ -134,7 +141,8 @@ class SerialPIDTempsReader():
             line = tail_1(self.dataDir+'serialPortOut.txt')
         else:
             line = self.ser.readline()
-        tstr = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        self.tnow = datetime.datetime.now()
+        tstr = self.tnow.strftime('%Y-%m-%dT%H:%M:%S.%f')
         self.f.write('%s  %s'%(tstr,line))
         self.f.flush()
         if self.debug: print line
@@ -160,7 +168,6 @@ class SerialPIDTempsReader():
     def readTempsFromFile(self, filename = ''):
 
         self.fileNameRead = filename
-        # TODO: figure out a way to read the datetime at the start
         data = genfromtxt(self.dataDir+filename,delimiter='')
         self.sample=data[:,1]
         self.t0 = data[:,2]
@@ -183,10 +190,22 @@ class SerialPIDTempsReader():
             self.output = data[:,15]
         
     def plotTemps(self, fignum=1):
+        legend_pole=['Inside Air','PID Input','Op-amp','Gnd plate',
+                     'heater exhaust','24V PS','E pink foam',
+                     'Arduino holder','El step mtr','48V PS',
+                     'Az stage', 'Outside 1','Outside 2']
+        legend_summit=['Inside Air','PID Input','Op-amp','near lim sw',
+                     'heater exhaust','24V PS','E pink foam',
+                     'Arduino holder','El step mtr','48V PS',
+                     'Az stage', 'upper baseplate','Outside 1']
+        if self.loc == 'pole':
+            leg = legend_pole
+        elif self.loc == 'summit':
+            leg = legend_summit
 
         if (mod(self.counter,self.replotTime) == 0 & (self.plotFig)) | (self.fileNameRead !=''):
             if self.debug: ion()
-            figure(fignum, figsize=(12,10));clf()
+            figure(fignum, figsize=(8,6));clf()
             
             subpl=subplot(4,1,1)
             plot(self.sample,self.t0,',-')
@@ -202,14 +221,15 @@ class SerialPIDTempsReader():
             ylabel("PID Temp [C]")
             ylim([m-5*s,m+5*s])
             subpl.set_xticklabels('')
-
+            legend(leg[0:2],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
+            
             subpl=subplot(4,1,2)
             plot(self.sample,self.output,'.-')
-            ylabel('PID outut [bits]')
+            ylabel('PID output [bits]')
             ylim([-10,4300])
             grid(color='b')
             twinx()
-            heaterPower = (43.*array(self.output)/4096)**2 / 8.0 # P through 8 ohms resistance
+            heaterPower = (43.*array(self.output)/4095)**2 / 8.0 # P through 8 ohms resistance
             maxHeaterPower = 43**2/8
             fracHeaterPower = 100*heaterPower/maxHeaterPower
             plot(self.sample,fracHeaterPower,'g.-')
@@ -219,6 +239,7 @@ class SerialPIDTempsReader():
             grid(color='b')
             subpl.set_xticklabels('')
             subplots_adjust(hspace=0.01)
+            legend(['pid output','frac power'],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
 
             subpl = subplot(4,1,3)
             plot(self.sample, self.t1,'-')
@@ -230,22 +251,24 @@ class SerialPIDTempsReader():
             plot(self.sample, self.t7,'-')
             plot(self.sample, self.t8,'-')
             plot(self.sample, self.t9,'-')
+            plot(self.sample, self.t10,'-')
             ylabel('Box Temps [C]')
             grid()
             subpl.set_xticklabels('')
-            #if self.counter == 5:
-            legend(['Op-amp','Gnd plate','heater air','24V PS','E pink foam',
-                    'Arduino holder','stepper mtr','48V PS','Az mtr'],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
-
+            legend(leg[2:11],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
+                        
             subplot(4,1,4)
-            plot(self.sample, self.t10)
             plot(self.sample, self.t11)
             ylabel('Outside Temp [C]')
             xlabel('time [s]')
             grid()
-            draw()
+            show()
             
     def loopNtimes(self, Niter=3600):
+        """
+        Niter in seconds
+
+        """
         
         self.initVar()
         self.openFile()
@@ -254,9 +277,11 @@ class SerialPIDTempsReader():
             time.sleep(0.1)
             # self.checkSerialReady()
 
-        while(self.counter < Niter):
+        elapsed_seconds = 0
+        while(elapsed_seconds < Niter):
             try:
                 self.recordSerial()
+                elapsed_seconds = (self.tnow-self.tstart).total_seconds()
                 if self.plotFig:
                     self.plotTemps()
             except KeyboardInterrupt:

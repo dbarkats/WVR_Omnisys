@@ -7,7 +7,8 @@ import time
 
 if __name__ == '__main__':
     usage = '''
- 
+  
+    
     '''
     #options ....
     parser = OptionParser(usage=usage)
@@ -35,7 +36,7 @@ if __name__ == '__main__':
                       dest="duration",
                       default=3500,
                       type=int,
-                      help="-d Duration in seconds of the observations. Defalt=3500s")
+                      help="-d Duration in seconds of the observations. Default=3500s")
 
 (options, args) = parser.parse_args()
   
