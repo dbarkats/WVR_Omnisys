@@ -23,7 +23,7 @@ class wvrAnalysis():
         self.reducDir = self.home+'/wvr_reducplots'
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
         
-    def readPIDTempsFile(self, fileList):
+    def readPIDTempsFile(self, fileList, verb=True):
 
         fileList = au.aggregate(fileList)
         
@@ -34,16 +34,16 @@ class wvrAnalysis():
         d=[]
         for filename in fl:
             if os.path.isfile(self.dataDir+filename):
-                print "Reading %s"%filename
+                if verb: print "Reading %s"%filename
                 data = genfromtxt(self.dataDir+filename,delimiter='',
                                   dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f',
                                   invalid_raise = False)
             else:
-                print "WARNING: %s file missing. skipping... "%filename
+                if verb: print "WARNING: %s file missing. skipping... "%filename
                 continue
             d.append(data)
-        
-        if size(d) == 0: return 0,0,0,0,0
+
+        if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)
         utTime = []
         for tstr in d['f0']:
@@ -65,16 +65,15 @@ class wvrAnalysis():
         output=d['f15']
         temps=vstack([t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11]).T
 
-        utwx, wx = self.readWxFile(fileList)
+        utwx, wx = self.readWxFile(fileList,verb=verb)
         if utwx == None:
             wxnew = None
         else:
-            wxnew = self.interpdatetime(utTime, utwx, wx)
+            wxnew = self.interpDatetime(utTime, utwx, wx)
         
         return utTime, sample, wxnew, temps, input, output
 
-
-    def interpdatetime(self,utTime, utwx, wx):
+    def interpDatetime(self,utTime, utwx, wx):
         """
         given a datetime array utTime, 
         this will interpolate utwx and wx to utTime
@@ -96,7 +95,9 @@ class wvrAnalysis():
 
         return wxnew
     
-    def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False):
+    def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
+
+        #TODO: add deglitching based on outer 4 channels
         
         legend_pole=['Inside Air','PID Input','Op-amp','Gnd plate',
                      'heater exhaust','24V PS','E pink foam',
@@ -110,7 +111,7 @@ class wvrAnalysis():
             leg = legend_pole
         elif self.loc == 'summit':
             leg = legend_summit
-        print self.loc
+        if verb: print "Making plots for location: %s"%self.loc
         if inter:
             ion()
         else:
@@ -118,20 +119,29 @@ class wvrAnalysis():
 
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
-        print "Loading %d PIDTemps files"%nfiles
+        if verb: print "Loading %d PIDTemps files"%nfiles
         ut, sample, wx, temps, input, output = self.readPIDTempsFile(fileList)
-        if size(sample) ==1: return
+        if size(sample) == 1: return
         
         fname = fileList[0].split('_')
+        if size(fname)<3:
+            obsTyp = None
+        else:
+            obsTyp = fname[2].split('.')[0]
         if nfiles > 1:
             figsize= (36,12)
+            leg_loc =(1.03, 1.03) 
             savefilename= '%s_2400.txt'%fname[0]
             trange=[ut[0].replace(hour=0,minute=0,second=0),
                     ut[-1].replace(hour=23,minute=59,second=59)]
         else:
             figsize=(12,8)
+            leg_loc =(1.13, 1.03)      
             savefilename = '%s_%s.txt'%(fname[0],fname[1][0:4])
-            trange=[ut[0].replace(minute=0),ut[-1].replace(minute=59)]
+            if obsTyp == 'skyDip':
+                trange=[ut[0].replace(minute=0,second=0),ut[-1].replace(second=59)]
+            else:
+                trange=[ut[0].replace(minute=0,second=0),ut[-1].replace(minute=59,second=59)]
         if (autoXrange):
             trange=[ut[0],ut[-1].replace(second=59)]
         
@@ -148,7 +158,7 @@ class wvrAnalysis():
         ylim([17,25])
         subpl.set_xlim(trange)
         subpl.set_xticklabels('')
-        legend([leg[1],'setpoint'],bbox_to_anchor=(1.13, 1.03), prop={'size':10})
+        legend([leg[1],'setpoint'],bbox_to_anchor=leg_loc, prop={'size':10})
         subpl=subplot(4,1,2)
         plot_date(ut,au.smooth(output,20),fmt='b-')
         ylabel('PID output [bits] (b)')
@@ -174,32 +184,36 @@ class wvrAnalysis():
         ylim([15,31])
         subpl.set_xticklabels('')
         subpl.set_xlim(trange)
-        legend(leg[2:12],bbox_to_anchor=(1.13, 1.03), prop={'size':10})
+        legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
                     
         subpl=subplot(4,1,4)
+        legw=[]
         if self.loc == 'pole':
             outtemp = [10,11]
         elif self.loc == 'summit':
             outtemp = [11]
-            if wx != None:
+            if wx is not None:
                 plot_date(ut,wx['tempC'],'r-')
+                legw.append('NOAA')
         for i in outtemp:
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
+            legw.append(legend_summit[i+1])
         ylabel('Outside Temp [C]')
         xlabel('UT time [s]')
         subpl.set_xlim(trange)
         subpl.xaxis.set_major_formatter(timefmt)
         grid(color='gray')
+        legend(legw,bbox_to_anchor=(leg_loc[0],leg_loc[1]-.7), prop={'size':10})
         title = savefilename.replace('.txt','_PIDTemps')
         suptitle(title,y=0.95, fontsize=24)
-        print "Saving %s.png"%title
+        if verb: print "Saving %s.png"%title
         savefig(title+'.png')
 
         if not inter:
             close('all')
         self.movePlotsToReducDir()
 
-    def readFastFile(self,fileList):
+    def readFastFile(self,fileList,verb=True):
 
         fileList = au.aggregate(fileList)
         nfiles = size(fileList)
@@ -209,7 +223,7 @@ class wvrAnalysis():
 
         d=[]
         for k,filename in enumerate(fl):
-            print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
+            if verb: print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
             e = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
             d.append(e)
         d = concatenate(d,axis=0)
@@ -234,7 +248,7 @@ class wvrAnalysis():
         chans = sort(q.keys())
         return  chans, q
     
-    def plotFastData(self,fileList, inter=False):
+    def plotFastData(self,fileList, inter=False,verb=True):
 
         if inter:
             ion()
@@ -243,14 +257,17 @@ class wvrAnalysis():
             
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
-        print "Loading %d fast files"%nfiles
+        if verb: print "Loading %d fast files"%nfiles
         utfast,tfast,azfast,elfast,d = self.readFastFile(fileList)
         if size(tfast) == 1: return
 
         chans, q = self.getIndex(d)
 
         fname = fileList[0].split('_')
-        obsTyp = fname[2].split('.')[0]
+        if size(fname)<3:
+            obsTyp = None
+        else:
+            obsTyp = fname[2].split('.')[0]
         timefmt = DateFormatter('%H:%M:%S')
         if nfiles > 1:
             filefast = '%s_2400.txt'%fname[0]
@@ -343,7 +360,7 @@ class wvrAnalysis():
             subplots_adjust(hspace=0.01)
             title = filefast.replace('.txt','_CH%s_FAST'%fr)
             suptitle(title,y=0.95, fontsize=20)
-            print "Saving %s.png"%title
+            if verb: print "Saving %s.png"%title
             savefig(title+'.png')
 
             if not inter:
@@ -351,7 +368,7 @@ class wvrAnalysis():
             self.movePlotsToReducDir()
 
             
-    def readSlowFile(self, fileList):
+    def readSlowFile(self, fileList,verb=True):
         
         fileList = au.aggregate(fileList)
         fl=[]
@@ -362,7 +379,7 @@ class wvrAnalysis():
         for filename in fl:
             if not(os.path.isfile(self.dataDir+filename)):
                 continue
-            print "Reading %s"%filename
+            if verb: print "Reading %s"%filename
             # to deal with files at start of season with missing AZ/EL columns
             testRead = open(self.dataDir+filename,'r').readlines()[3]
             if 'AZ' in testRead:
@@ -376,6 +393,7 @@ class wvrAnalysis():
             else:
                 e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
             d.append(e)
+        if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)
 
         keys = d.dtype.fields.keys()
@@ -401,11 +419,16 @@ class wvrAnalysis():
         tsrc= np.vstack([tsrc0,tsrc1,tsrc2,tsrc3]).T # array of N rows by 4 columns
         return (utTime,tslow,d,az,el,tsrc)
     
-    def plotHk(self, fileList, inter=False):
+    def plotHk(self, fileList, inter=False,verb=True):
         """
         takes a fileList of *.tar.gz files
         generate housekeeping plots for a single filebase.tar.gz
-        Will generate 4 plots
+        Will generate 4 plots: 
+            - LOAD_TEMPS
+            - WVR_TEMPS
+            - WVR_Calibrated_Tsrc
+            - AZ_EL
+
         """        
         if inter:
             ion()
@@ -414,18 +437,21 @@ class wvrAnalysis():
             
         timefmt = DateFormatter('%H:%M:%S')
         utTime, tslow, d, az, el, tsrc = self.readSlowFile(fileList)
-
+        if size(tslow) == 1: return
+        
         nfiles = size(fileList)
         fname = fileList[0].split('_')
         obsTyp = fname[2].split('.')[0]
         if nfiles > 1:
             fileslow = '%s_2400.txt'%fname[0]
             figsize=(36,12)
+            #leg_loc = 
             trange=[utTime[0].replace(hour=0,minute=0,second=0),
                     utTime[-1].replace(hour=23,minute=59,second=59)]
         else:
             fileslow = '%s_%s.txt'%(fname[0],fname[1][0:4])
             figsize=(12,10)
+            #leg_loc=
             if obsTyp == 'skyDip':
                 trange=[utTime[0].replace(minute=0,second=0),utTime[-1].replace(second=59)]
             else:
@@ -443,15 +469,19 @@ class wvrAnalysis():
         ylabel('HOT LOAD [K]')
         yl=ylim([m-.04,m+.04])
         xl=xlim()
-        cap = 'Setp=%3.3f K, Mean=%3.3f K, sigm= %3.3f mK' \
+        cap = 'Setp=%3.3f K, Mean=%3.3f K, std= %3.3f mK' \
               %(d['HOT_SETP'][0],m,st*1e3)
-        text(xl[1]/2,yl[1]-2*st,cap)
+        text(xl[0],yl[1]-.01,cap)
         sp.set_xticklabels('')
         sp.set_xlim(trange)
         
         sp=subplot(4,1,2)
         plot_date(utTime, d['HOT_PWM'],fmt='.')
         ylabel('HOT PWM [%]')
+        m = mean(d['HOT_PWM'])
+        st = std(d['HOT_PWM'])
+        print "hot pwm mean/std:",m,st
+        ylim([10,50])
         grid()
         sp.set_xticklabels('')
         sp.set_xlim(trange)
@@ -464,9 +494,9 @@ class wvrAnalysis():
         print "cold mean/std:",m,st
         grid()
         yl=ylim([m-.04,m+.04])
-        cap = 'Setp=%3.3f K, Mean=%3.3f K, sigm= %3.3f mK' \
+        cap = 'Setp=%3.3f K, Mean=%3.3f K, std= %3.3f mK' \
               %(d['COLD_SETP'][0],m,st*1e3)
-        text(xl[1]/2,yl[1]-2*st,cap)
+        text(xl[0],yl[1]-.01,cap)
         ylabel('COLD LOAD [K]')
         sp.set_xticklabels('')
         sp.set_xlim(trange)
@@ -478,6 +508,10 @@ class wvrAnalysis():
         subplots_adjust(hspace=0.01)
         sp.set_xlim(trange)
         sp.xaxis.set_major_formatter(timefmt)
+        m = mean(d['COLD_PWM'])
+        st = std(d['COLD_PWM'])
+        print "cold pwm mean/std:",m,st
+        ylim([10,50])
         grid()
         title = fileslow.replace('.txt','_LOAD_TEMPS')
         suptitle(title,y=0.95, fontsize=24)
@@ -579,7 +613,7 @@ class wvrAnalysis():
 
         sp = subplot(3,1,2)
         waz = mod(az,360)
-        plot_date(utTime,waz,'.')
+        plot_date(utTime,waz,'.-')
         grid()
         ylabel('raw az [deg]')
         ylim([-10,370])
@@ -592,6 +626,7 @@ class wvrAnalysis():
         ylabel('diff az [deg/s]')
         subplots_adjust(hspace=0.01)
         sp.xaxis.set_major_formatter(timefmt)
+        ylim([0,20])
         sp.set_xlim(trange)
         xlabel('ut time')
         title = fileslow.replace('.txt','_AZ_EL')
@@ -602,29 +637,57 @@ class wvrAnalysis():
         if not inter:
             close('all')
         self.movePlotsToReducDir()
+
+    def readStatFile(self, fileList, verb=True):
+        
+        fileList = au.aggregate(fileList)
+        fl=[]
+        for f in fileList:
+            fl.append(f.replace('.tar.gz','_stat.txt'))
+
+        d=[]
+        for filename in fl:
+            if not(os.path.isfile(self.dataDir+filename)):
+                continue
+            if verb: print "Reading %s"%filename
+            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+            d.append(e)
+        d = hstack(d)
+
+        keys = d.dtype.fields.keys()
+        utTime = []
+        for tstr in d['TIME']:
+            # try/except to deal with early season change of format
+            try:
+                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+            except:
+                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
+        tslow = d['TIMEWVR']
+        return (utTime,tslow,d)
         
     def movePlotsToReducDir(self):
         # move the plots to reduc_plots dir
         os.system('mv -f *.png %s'%self.reducDir)
-
         return
                       
-    def readWxFile(self,fileList, type='NOAA'):
+    def readWxFile(self,fileList, type='NOAA',verb=True):
         """
-        Given a list of files, this will read all of them, and produce a concatenated output 
+        Given a list of files, this will read all of them, 
+        and produce a concatenated output 
         ready to be plotted.
         """
         fileList = au.aggregate(fileList)
         if size(fileList) == 0:
             print "No Wx data during that time range"
-            return None, None
+            return (None, None)
 
         fl=[]
         for f in fileList:
             ymd = f.split('_')[0]
             hms = f.split('_')[1]
             fl.append('%s_%s0000'%(ymd,hms[0:2])+'_Wx_Summit_NOAA.txt')
-
+        fl = unique(fl)
+        
         wx=[]
         for filename in fl:
             filename = self.dataDir+filename
@@ -699,7 +762,6 @@ class wvrAnalysis():
                 wx[k]=wx[k][max(q-60,0):min(q+60,nrows)]
         
         return wx
-
     
     def plotWx(self,fileList, inter=False):
         """
@@ -711,31 +773,35 @@ class wvrAnalysis():
         else:
             ioff()
 
+        timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         print "Loading %d Wx files"%nfiles
         utwx, wx= self.readWxFile(fileList)
         if utwx == None: return
         fields = wx.dtype.fields
-        
+
         fname = fileList[0].split('_')
         if nfiles > 1:
             figsize= (36,12)
+            leg_loc = (1.03,1.03)
             fileslow = '%s_2400.txt'%(fname[0])
-            trange=[utwx[0].replace(hour=0,minute=0,second=0),
+            trange=[utwx[1].replace(hour=0,minute=0,second=0),
                     utwx[-1].replace(hour=23,minute=59,second=59)]
+            
         else:
             figsize=(12,10)
+            leg_loc = (1.13,1.03)
             fileslow = '%s_%s.txt'%(fname[0],fname[1][0:4])
-            trange=[utwx[0].replace(minute=0),utwx[-1].replace(minute=59)]
-                
+            trange=[utwx[1].replace(minute=0),utwx[-1].replace(minute=59)]
+
         # plot wx variables.
         figure(1, figsize=figsize);clf()
         
         sp = subplot(4,1,1)
-        plot_date(utwx, wx['tempC'],fmt='.')
+        plot_date(utwx, wx['tempC'],fmt='.-')
         if 'dewC'in fields:
-            plot_date(utwx, wx['dewC'],fmt='g.')
-            legend(['temp','dewpoint'],bbox_to_anchor=(1.12, 1.03), prop={'size':10})   
+            plot_date(utwx, wx['dewC'],fmt='g.-')
+            legend(['temp','dewpoint'],bbox_to_anchor=leg_loc, prop={'size':10})   
         sp.set_xticklabels('')
         sp.set_xlim(trange)
         m = nanmean(wx['tempC'])
@@ -748,7 +814,7 @@ class wvrAnalysis():
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
         
         sp = subplot(4,1,2)
-        plot_date(utwx, wx['rh'],fmt='.')
+        plot_date(utwx, wx['rh'],fmt='.-')
         sp.set_xticklabels('')
         sp.set_xlim(trange)
         q = find((wx['rh']<100.0) & (wx['rh']>0.0))
@@ -761,10 +827,10 @@ class wvrAnalysis():
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
 
         sp = subplot(4,1,3)
-        plot_date(utwx, wx['wsms'],fmt='.')
+        plot_date(utwx, wx['wsms'],fmt='.-')
         if 'wsmsGust' in fields:
-            plot_date(utwx, wx['wsmsGust'],fmt='g.')
-            legend(['Mean','Gusts'],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
+            plot_date(utwx, wx['wsmsGust'],fmt='g.-')
+            legend(['Mean','Gusts'],bbox_to_anchor=leg_loc, prop={'size':10})
         m = nanmean(wx['wsms'])
         s = nanstd(wx['wsms'])
         ylabel('Wx Wind Speed [m/s]')
@@ -776,19 +842,19 @@ class wvrAnalysis():
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
 
         sp = subplot(4,1,4)
-        plot_date(utwx, wx['wddeg'],fmt='.')
+        plot_date(utwx, wx['wddeg'],fmt='.-')
         sp.set_xlim(trange)
         m = mod(math.asin(mean(sin(wx['wddeg']*pi/180)))*180/pi,360)
         s = math.asin(std(sin(wx['wddeg']*pi/180)))*180/pi
         grid(color='gray')
-        ylabel('Wx Wind Direction [Deg]')
+        ylabel('Wx Wind Dir [Deg]')
         yl=ylim([-10,370])
         cap = 'Dir: %3.1f +- %3.1fdeg'%(m,s)
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
-
+        sp.xaxis.set_major_formatter(timefmt)
         subplots_adjust(hspace=0.01)
         xlabel('UT time')     
-        title = fileslow.replace('.txt','_wx')
+        title = fileslow.replace('.txt','_Wx')
         suptitle(title,y=0.95, fontsize=20)      
         print "Saving %s.png"%title
         savefig(title+'.png')

@@ -47,10 +47,10 @@ if __name__ == '__main__':
 #### DEFINE VARIABLES #########
 script = "wvrBeamMap.py"
 azScanningSpeed = options.speed # in deg/s
-minScanEl = 35 # in deg
-maxScanEl = 45 # in deg. Must be greater than  minScanEl
-deltaEl = 0.5 # in deg
-Nsteps = int((maxScanEl - minScanEl)/deltaEl) +1
+minScanEl = 24 # in deg
+maxScanEl = 30 # in deg. Must be greater than  minScanEl
+deltaEl = 0.25 # in deg
+Nsteps = int((maxScanEl - minScanEl)/deltaEl) + 1
 elSteps = minScanEl + arange(Nsteps)*deltaEl
 NscansPerElStep = 1
 oneStepAzScanningDuration =  NscansPerElStep * 360/azScanningSpeed

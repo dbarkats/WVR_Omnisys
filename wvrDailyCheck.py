@@ -3,6 +3,8 @@
 from optparse import OptionParser
 import reduc_wvr_pager as rw
 import datetime
+import wvrAnalysis
+
 
 if __name__ == '__main__':
     usage = '''
@@ -13,18 +15,21 @@ if __name__ == '__main__':
     parser.add_option("-s",
                       dest = "start",
                       default=None,
-                      help="-s, date in YYYYMMDD format to start making the plots for. Default is today -2")
+                      help="-s, date in YYYYMMDD format. Default is today")
 
     (options, args) = parser.parse_args()
 
     rwp = rw.reduc_wvr_pager()
+    wvrA = wvrAnalysis.wvrAnalysis()
 
     if options.start == None:
-        n = datetime.datetime.now()
-        nm2 = n - datetime.timedelta(days=2)
-        s = nm2.strftime('%Y%m%d')
+        today=datetime.datetime.now().strftime('%Y%m%d')
     else:
-        s = options.start
-    rwp.make_reduc_plots(update=False,start=s,do24hr=True)
-    rwp.make_reduc_plots(update=False,start=s,do1hr=True, do24hr=False)
-    rwp.updatePager()
+        today = options.start
+
+    rwp.getDailyPIDTempsStats(today,verb = False)
+    rwp.getDailyStatStats(today, verb = False)
+
+    # get  log stats
+    # get cronjob enabled ?
+    #
