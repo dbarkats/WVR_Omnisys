@@ -88,11 +88,11 @@ class reduc_wvr_pager():
 
         # untar files as necessary
         for f in fileList:
-            if 'wvr' not in self.host:
+            if (self.host is not 'wvr1') or (host is not 'wvr2'):
                 if not os.path.exists(f.replace('.tar.gz','_slow.txt')):
                     print "Untarring: %s"%f
                     os.system('tar -xzvf %s'%f) # untar files
-        
+                    
             dateList.append(datetime.strptime(f[0:15],'%Y%m%d_%H%M%S'))
             dayList.append(datetime.strptime(f[0:8],'%Y%m%d'))
         os.chdir(cwd)
@@ -116,8 +116,9 @@ class reduc_wvr_pager():
             for f in self.fileList:
                 print ''
                 print f
-                plotfile = f.replace('.tar.gz','_LOAD_TEMPS.png')
-                PIDTempsfile = f.replace('.tar.gz','_PIDTemps.txt')
+                fname = f.split('_')
+                plotfile = '%s_%s_LOAD_TEMPS.png'%(fname[0],fname[1][0:4])
+                PIDTempsfile = plotfile.replace('_LOAD_TEMPS','_PIDTemps')
 
                 if update:
                     if os.path.isfile(self.reducDir+plotfile): 
@@ -140,6 +141,8 @@ class reduc_wvr_pager():
 
                 #print "Making 1hr Fast plot for %s"%f
                 #wvrA.plotFastData([f],inter=False )
+
+                close("all")
                 
         # make 24-hr plots
         if do24hr:
@@ -173,6 +176,8 @@ class reduc_wvr_pager():
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
                 wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
+
+                self.makeSymlinks(day)
                 
     def makeSymlinks(self, day):
         plottypes = ['PIDTemps','AZ_EL','WVR_Calibrated_TSRC','WVR_TEMPS','LOAD_TEMPS','Wx']
@@ -183,9 +188,8 @@ class reduc_wvr_pager():
             for t in plottypes:
                 plotname = '%s_%s00_%s.png'%(day,h,t)
                 linkname = plotname.replace('_%s00_'%h,'_%s01_'%h)
-                
-                cmd = 'ln -s %s %s'%(plotname, linkname)
-                print cmd
+                cmd = 'ln -s %s %s'%(linkname, plotname)
+                #print cmd
                 os.system(cmd)
         os.chdir(cwd)
         

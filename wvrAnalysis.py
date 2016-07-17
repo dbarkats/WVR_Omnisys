@@ -14,7 +14,7 @@ class wvrAnalysis():
         """
         """       
         hostname = socket.gethostname()
-        if hostname == 'wvr2':
+        if hostname.startswith('wvr2'):
             self.loc = 'summit'
         elif hostname == 'wvr1':
             self.loc = 'pole'
@@ -366,8 +366,7 @@ class wvrAnalysis():
             if not inter:
                 close('all')
             self.movePlotsToReducDir()
-
-            
+     
     def readSlowFile(self, fileList,verb=True):
         
         fileList = au.aggregate(fileList)
