@@ -204,7 +204,7 @@ class reduc_wvr_pager():
         cmd = 'ntpstat'
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
-        if (verb), print aout,aerr
+        if (verb): print aout,aerr
         b = aout.split('\n')
         
         offset = int(b[1].split()[-2])
@@ -215,7 +215,7 @@ class reduc_wvr_pager():
             print "ntpstat: FAIL"
             return 0
 
-     def getCrontabStatus(self,verb=True):
+    def getCrontabStatus(self,verb=True):
 
         """
         return the result of crontab -l
@@ -224,7 +224,7 @@ class reduc_wvr_pager():
         cmd = 'crontab -l'
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
-        if (verb), print aout.split('\n'),aerr.split('\n')
+        if (verb): print aout.split('\n'),aerr.split('\n')
         
         if aout == '':
             print "crontab status: FAIL"
@@ -233,26 +233,30 @@ class reduc_wvr_pager():
             print "crontab status: PASS"
             return 1
 
-    def checkDataStatus(self, time=0, prefix='', verb = True):
+    def checkDataStatus(self, prefix='', verb = True):
         """
         checks if files are present during last hour
         """
 
         fmt = "%Y%m%d_%H*"
-        cmd = 'ls -lrt $(date +'+fmt+ ' -d\" hour ago\")*%s*'%(time,prefix)
+        cwd = os.getcwd()
+        os.chdir(self.dataDir)
+        cmd = 'ls -lrt $(date +'+fmt+ ' -d\"0 hour ago\")*%s*'%(prefix)
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
+        os.chdir(cwd)
+        if (verb): print aout.split('\n'),aerr.split('\n')
         
-         nfiles = size(aout.split('\n'))
-         if nfiles >= 5:
-             print "Files written in last hour: %d : PASS"%nfiles
-             return 0
-         elif (nfiles < 5 ) and (nfiles >=1)
+        nfiles = size(aout.split('\n'))
+        if nfiles >= 5:
+            print "Files written in last hour: %d : PASS"%nfiles
+            return 0
+        elif (nfiles < 5 ) and (nfiles >=1):
             print "Files written in last hour: %d : CHECK"%nfiles
             return 1
-         else: 
-             print "Files written in last hour: %d : FAIL"%nfiles
-             return 1
+        else: 
+            print "Files written in last hour: %d : FAIL"%nfiles
+            return 1
 
     def checkFileSizeStatus(self, time=0, prefix='log',thres = 1e4, verb=True):
         """
@@ -261,19 +265,22 @@ class reduc_wvr_pager():
         """
 
         fmt = "%Y%m%d*"
+        cwd= os.getcwd()
+        os.chdir(self.dataDir)
         cmd = 'ls -lrt $(date +'+fmt+ ' -d\"%d days ago\")*%s*'%(time,prefix)
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
-        if (verb), print aout,aerr
+        os.chdir(cwd)
         
-        nfiles = size(aout.split('\n'))
+        nfiles = size(aout.split('\n'))-1
         listing =  aout.split('\n')
-        if (verb), print listing ,aerr.split('\n')
+        if (verb): print listing ,aerr.split('\n')
         
         pas = 0
         fail = 0
         for i in range(nfiles):
-            if int(listing.split(4)) < thres :
+            if verb: print listing[i]
+            if int(listing[i].split()[4]) < thres :
                 pas = pas+1
             else:
                 fail = fail+1
@@ -295,19 +302,20 @@ class reduc_wvr_pager():
         cmd = 'ps -elf |grep  %s |grep -v grep| grep -v checkProcess.py'%pname
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
-        if (verb), print aout,aerr
-        listing =  aout.split('\n')
-
-        currentProcess = []
+        if (verb): print aout,aerr
+        listing =  aout.split('\n')[:-1]
+        
+        nproc = 0
         if listing == []:
             print "Unique Daq script: FAIL"
             print "No process containing %s"%pname
             return 1
         else:
             for line in listing:
-                if ("wvrNoise.py" in line) or ("wvrObserv1hr.py" in line):
-                    currentProcess.append(line)
-            if size(currentProcess) == 2:
+                if (('wvrNoise.py' in line) or ('wvrObserve1hr.py' in line)):
+                    nproc = nproc+1
+                    if verb: print line
+            if nproc == 2:
                 print "Unique Daq script: PASS"
                 return 0
             else:
