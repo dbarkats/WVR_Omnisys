@@ -89,7 +89,7 @@ class reduc_wvr_pager():
 
         # untar files as necessary
         for f in fileList:
-            if (self.host is not 'wvr1') or (host is not 'wvr2'):
+            if (self.host != 'wvr1') and (self.host != 'wvr2'):
                 if not os.path.exists(f.replace('.tar.gz','_slow.txt')):
                     print "Untarring: %s"%f
                     os.system('tar -xzvf %s'%f) # untar files
@@ -331,10 +331,10 @@ class reduc_wvr_pager():
         print ''
         print '#############################################'
         print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
-        print "Inside WVR air Temp (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(input),median(input),max(input))
-        print "Outside NOAA Temp (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']))
-        print "Main heater Output (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output))
-        print "Az stage Temp (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]))
+        print "Inside WVR air Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(input),median(input),max(input),std(input))
+        print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
+        print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output),std(output))
+        print "Az stage Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
 
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
