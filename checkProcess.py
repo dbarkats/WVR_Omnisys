@@ -5,7 +5,7 @@ import datetime
 import signal
 from optparse import OptionParser
 
-def checkProcess(processName,debug=False, force=False):
+def checkProcess(processName, debug=False, force=False):
     """
     given processName, check if it's present and if it was started in last hour, leave it, if it was started more than 1 hour ago, kill it
     processName should be 'wvrObserve1hr.py', or 'wvrNoise.py'
@@ -13,7 +13,6 @@ def checkProcess(processName,debug=False, force=False):
     # check if a process called "processName" is present
     cmd = 'ps -elf |grep  %s |grep -v grep|grep -v checkProcess.py'%processName
     if debug: print cmd
-
     
     results=os.popen(cmd).read()
     if debug: print results

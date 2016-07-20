@@ -13,6 +13,7 @@ from pylab import *
 from datetime import datetime
 import os
 import socket
+from subprocess import Popen, PIPE
 
 class reduc_wvr_pager():
 
@@ -193,6 +194,126 @@ class reduc_wvr_pager():
                 os.system(cmd)
         os.chdir(cwd)
         
+
+    def getNtpStat(self,verb=True):
+        """
+        return the result of ntpstat
+
+        """
+       
+        cmd = 'ntpstat'
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        if (verb), print aout,aerr
+        b = aout.split('\n')
+        
+        offset = int(b[1].split()[-2])
+        if ('synchronised to NTP server' in b[0]) and (offset < 100):
+            print "ntpstat: PASS"
+            return 1
+        else:
+            print "ntpstat: FAIL"
+            return 0
+
+     def getCrontabStatus(self,verb=True):
+
+        """
+        return the result of crontab -l
+
+        """
+        cmd = 'crontab -l'
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        if (verb), print aout.split('\n'),aerr.split('\n')
+        
+        if aout == '':
+            print "crontab status: FAIL"
+            return 0
+        else:
+            print "crontab status: PASS"
+            return 1
+
+    def checkDataStatus(self, time=0, prefix='', verb = True):
+        """
+        checks if files are present during last hour
+        """
+
+        fmt = "%Y%m%d_%H*"
+        cmd = 'ls -lrt $(date +'+fmt+ ' -d\" hour ago\")*%s*'%(time,prefix)
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        
+         nfiles = size(aout.split('\n'))
+         if nfiles >= 5:
+             print "Files written in last hour: %d : PASS"%nfiles
+             return 0
+         elif (nfiles < 5 ) and (nfiles >=1)
+            print "Files written in last hour: %d : CHECK"%nfiles
+            return 1
+         else: 
+             print "Files written in last hour: %d : FAIL"%nfiles
+             return 1
+
+    def checkFileSizeStatus(self, time=0, prefix='log',thres = 1e4, verb=True):
+        """
+        checks if file sizes are present in last day and all smaller or larger than thresh
+        Default is to check log files from today less than 10 000 bytes.
+        """
+
+        fmt = "%Y%m%d*"
+        cmd = 'ls -lrt $(date +'+fmt+ ' -d\"%d days ago\")*%s*'%(time,prefix)
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        if (verb), print aout,aerr
+        
+        nfiles = size(aout.split('\n'))
+        listing =  aout.split('\n')
+        if (verb), print listing ,aerr.split('\n')
+        
+        pas = 0
+        fail = 0
+        for i in range(nfiles):
+            if int(listing.split(4)) < thres :
+                pas = pas+1
+            else:
+                fail = fail+1
+
+        print "%s \"%s\" files written in past day"%(nfiles, prefix)
+
+        if thres > 0:
+            if pas > fail:
+                print "%d files below %d bytes threashold"%(pas,thres)
+                print "%s file size: PASS"%prefix
+                return 0
+            else:
+                print "%d files above %d bytes threashold"%(fail,thres)
+                print "%s file size: FAIL"%prefix
+                return 1
+        
+    def checkUniqueProcess(self,pname="wvr", verb=True):
+         
+        cmd = 'ps -elf |grep  %s |grep -v grep| grep -v checkProcess.py'%pname
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        if (verb), print aout,aerr
+        listing =  aout.split('\n')
+
+        currentProcess = []
+        if listing == []:
+            print "Unique Daq script: FAIL"
+            print "No process containing %s"%pname
+            return 1
+        else:
+            for line in listing:
+                if ("wvrNoise.py" in line) or ("wvrObserv1hr.py" in line):
+                    currentProcess.append(line)
+            if size(currentProcess) == 2:
+                print "Unique Daq script: PASS"
+                return 0
+            else:
+                print "Unique Daq script: FAIL"
+                return 1
+
             
     def getDailyPIDTempsStats(self, start = None, verb = True):
         
@@ -206,7 +327,6 @@ class reduc_wvr_pager():
         print "Outside NOAA Temp (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']))
         print "Main heater Output (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output))
         print "Az stage Temp (Min/Mean/Max): %3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]))
-
 
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
