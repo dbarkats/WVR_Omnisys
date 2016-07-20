@@ -1,0 +1,10 @@
+MAILTO=dbarkats@cfa.harvard.edu
+SHELL=/bin/bash
+
+5 * * * *   $HOME/wvr2data_from_wvr2.bash
+10 1-23 * * * $HOME/wvr_pipeline/makePager.py -u -t 0
+10 0 * * * $HOME/wvr_pipeline/makePager.py -t 1
+
+# This command has been added to the sudo's crontab on wvr2a
+#3 * * * * sudo sysctl -w vm.drop_caches=3
+#
