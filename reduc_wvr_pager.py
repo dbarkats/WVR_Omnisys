@@ -335,6 +335,9 @@ class reduc_wvr_pager():
         print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
         print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output),std(output))
         print "Az stage Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
+        print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['wxms']),median(wx['wsms']),max(wx['wsms']),std(wx['wsms']))
+
+
 
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
