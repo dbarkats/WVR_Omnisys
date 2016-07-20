@@ -690,7 +690,7 @@ class wvrAnalysis():
         wx=[]
         for filename in fl:
             filename = self.dataDir+filename
-            print "Reading %s"%filename
+            if (verb): print "Reading %s"%filename
             if (type=='NOAA'):
                 if os.path.isfile(filename):
                     e = genfromtxt(filename,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
