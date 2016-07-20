@@ -59,7 +59,7 @@ class wvrComm():
         fmt_r = 'B H 8s 20s 40s 40s'# empty char, address, data, serverIP, filename, msg
         self.unpacker = struct.Struct(fmt_r) 
         self.recv_size = self.unpacker.size
-
+        
     def getTCPInfo(self):
         fmt = "7B21I"
         x = struct.unpack(fmt,self.sock.getsockopt(socket.IPPROTO_TCP,socket.TCP_INFO,92))
@@ -141,7 +141,7 @@ class wvrComm():
         if 'tftpy' not in (os.popen('ps -elf | grep [t]ftpy_server.py')).read():
             print "WARNING: Run the tftp server before calling this command."
             print "        In a separate window, run:"
-            print "        - sudo tftpy_server.py -r ~/WVR_Omnisys/tftp/"
+            print "        - sudo tftpy_server.py -r ~/wvr_pipeline/tftp/"
             print "        - enter passwd"
             print "        - tftpy should be running"
             return 1
@@ -174,7 +174,7 @@ class wvrComm():
         upload the wvr calibration file to an tftp server.
         For this to work, a tftp server must be running.
         In a separate window, run:
-            - sudo tftpy_server.py -r ~/WVR_Omnisys/tftp/
+            - sudo tftpy_server.py -r ~/wvr_pipeline/tftp/
             - enter passwd
             - tftp server should be running
         """
@@ -212,9 +212,9 @@ class wvrComm():
         volt = res[2]
         temp = res[3]
         test = res[4]
-        if self.debug:
-            print "BYTES: %d, CTRL: %d, 12V: %d" %(byts, ctrl, V12)
-            print "CURR: %d, VOLT: %d, TEMP: %d, TEST: %d" %(curr, volt, temp, test)
+        if 1:
+            print "BYTES: %d, CTRL: %d, 12V: %d, CURR: %d, VOLT: %d, TEMP: %d, TEST: %d " %(byts, ctrl, V12,curr, volt, temp, test)
+            
         return (byts, ctrl, V12, curr, volt, temp, test)
 
     def getWvrState(self):
@@ -227,7 +227,7 @@ class wvrComm():
         alarm = get_bits(res,4)
         op = get_bits(res,2)
         mode = 2 * get_bits(res, 1) + get_bits(res, 0)
-        if self.debug:
+        if 1:
             print "TE:%d CLK:%d BOOT:%d ALARM:%d OP:%d MODE:%d"%(te,clk,boot,alarm,op,mode)
             if mode == 0:
                 print "Mode: Operational"
@@ -304,11 +304,12 @@ class wvrComm():
         return pwmfrac
 
     def getChopPos(self):
-        """Doesn't currently uppack data correctly."""
+        """
+        """
         rid = GET_CHOP_POS[0]
         unpacked_data = self.sendMessageReadResponse(rid,'')
-        res = struct.unpack('8B',unpacked_data[2])
-        if self.debug: print "CHOPPER POS:%d  ZERO-POSITION:%d"%(res[0],res[1])
+        res = struct.unpack('HHf',unpacked_data[2])
+        if self.debug: print "CHOPPER POS:%d  ZERO-POSITION:%d (out of 4096)"%(res[0],res[1])
         return res
 
     def getChopCurr(self):
@@ -563,12 +564,55 @@ class wvrComm():
         res =  struct.unpack('ff', unpacked_data[2])
         if self.debug: print "time: %3.3f  Tsrc0: %3.3fK"%(res[1],res[0])
         return res
-                
+    
+    def getIntSet(self):
+        """
+        get Integration Setting
+        """
+        rid = GET_INT_SETS[0]
+        unpacked_data = self.sendMessageReadResponse(rid,'')
+        res = struct.unpack('HHf',unpacked_data[2])
+        if self.debug: print "Tsrc integ:%d  Gain Smooth time:%d (multiples of 192ms"%(res[0],res[1])
+        return res
+    
     def getTsrc(self,chan=0):
         rid = GET_INT_TSRC0[0]+8*chan
         unpacked_data= self.sendMessageReadResponse(rid,'')
         res =  struct.unpack('ff',unpacked_data[2])
-        if self.debug: print "time: %3.7f  Tsrc0: %3.3fK"%(res[1],res[0])
+        if self.debug: print "time: %3.7f  Tsrc%d: %3.3fK"%(res[1],chan,res[0])
+        return res
+    
+    def getTcold(self,chan=0):
+        rid = GET_INT_COLD0[0]+8*chan
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ff',unpacked_data[2])
+        if self.debug: print "time: %3.7f  Tcold%d: %3.0f counts"%(res[1],chan,res[0])
+        return res
+    
+    def getThot(self,chan=0):
+        rid = GET_INT_HOT0[0]+8*chan
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ff',unpacked_data[2])
+        if self.debug: print "time: %3.7f  Thot%d: %3.0f counts"%(res[1],chan,res[0])
+        return res
+    
+    def getIntTime(self,phase='C'):
+        """
+        get actual integarion time  during last 48ms period for phase=X
+        phase can be: 'C', 'H','A', 'B'
+        """
+        if phase == 'C':
+            rid = GET_INT_TIMEC[0]
+        elif phase == 'H':
+            rid = GET_INT_TIMEH[0]
+        elif phase == 'A':
+            rid = GET_INT_TIMEA[0]
+        elif phase == 'B':
+            rid = GET_INT_TIMEB[0]   
+        unpacked_data= self.sendMessageReadResponse(rid,'')
+        res =  struct.unpack('ii',unpacked_data[2])
+        time = res[0]
+        if self.debug: print "Time%s: %d, %3.5f ms"%(phase,time, time*31.25*1e-6)
         return res
             
     def getMbuf(self,chan=0):
@@ -617,20 +661,35 @@ class wvrComm():
         """
         Simple wrapper to reboot WVR
         """
+        self.getWvrState()
         self.setWvrState(1,(0,1,0,0))
         print "Rebooted WVR... This will take 30s... Please wait..."
         time.sleep(30)
-        if self.debug: print self.getWvrState()
+        self.getWvrState()
 
     def clearWvrAlarms(self):
         """
         when an alarm is present, use this function to 
         clear the alarm. 
         """
+        print 'Wvr State:'
+        st = self.getWvrState()
+        mode = st[0]
+        print 'Wvr Alarms:'
         self.getWvrAlarms()
-        print "Clearing Alarms by resetting trip bit and mode to IDLE"
-        self.setWvrState(1,(0,0,1,0))
+        print ""
+        print "Clearing Alarms by resetting trip bit, resetting timestamp counter and leaving mode as is"
+        print ""
+        # keeps mode unchanged
+        # clears the timestamp counter, 
+        # clear CPU boot bit.
+        self.setWvrState(mode,(0,0,1,1))
+        time.sleep(1)
+        print "Wvr State:"
+        self.getWvrState()
+        print "Wvr Alarms:"
         self.getWvrAlarms()
+
         
     def setWvrToOperation(self):
         """
@@ -675,6 +734,44 @@ class wvrComm():
             if self.debug: print self.getChopState()
             return 1
 
+    def getHk(self):
+        """
+        test function written to simply simulate the  wvrdaq.acquireHk() and the anmount of time it takes to aquire these monitor points.
+        Function only used for troubleshooting
+        """
+
+        coldT = self.getColdTemp()
+        coldPwm = self.getColdPwm()
+        hotT = self.getHotTemp()
+        hotPwm = self.getHotPwm()
+        tpT = self.getTpTemp()
+        tpPwm = self.getTpPwm()
+        csT = self.getCsTemp()
+        csPwm = self.getCsPwm()
+        beT = self.getBeTemp()
+        bePwm = self.getBePwm()
+        lnaT = self.getLnaTemp()
+        b0= self.getBeBias0()
+        b1=self.getBeBias1()
+        b2= self.getBeBias2()
+        b3=self.getBeBias3()
+        chopPwm = self.getChopPwm()
+        Cchop = self.getChopCurr()
+        V12=self.getCtrl12Volt()
+        C12=self.getCtrl12Curr()
+        V6  = self.getCtrl6Volt()
+        C6  = self.getCtrl6Curr()
+        VM6 =self.getCtrlM6Volt()
+        CM6 =self.getCtrlM6Curr()
+        lof = self.getLoFreq()
+        lobias0 = self.getLoBias0()
+        lobias1 = self.getLoBias1()
+        t0=self.getTsrc(0)
+        t1=self.getTsrc(1)
+        t2=self.getTsrc(2)
+        t3=self.getTsrc(3)
+        
+      
     def getStatus(self):
         
         """
@@ -712,5 +809,3 @@ class wvrComm():
             print '%s,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d,%5d, %3.3f, %3.3f, %2.2f, %3.3f, %3.3f, %2.2f, %3.3f, %3.3f, %2.2f,%3.3f, %3.3f, %2.2f, %3.3f, %3.3f, %2.2f, %3.3f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %d,%2.2f, %2.2f'%(t, al[0],al[1],al[2],al[3],al[4],al[5],al[6],st[0],st[1],st[2],st[3],st[4],st[5],coldT[1],coldT[0],coldPwm,hotT[1],hotT[0],hotPwm, tpT[1],tpT[0],tpPwm,csT[1],csT[0],csPwm,beT[1],beT[0],bePwm,lnaT,V12,V6,VM6,C12,C6,CM6,lof,lobias0,lobias1)
         else:
             return (t, al,st,coldT,coldPwm,hotT,hotPwm, tpT,tpPwm,csT,csPwm,beT,bePwm,lnaT,V12,V6,VM6,C12,C6,CM6,lof,lobias0,lobias1)
-    
-    

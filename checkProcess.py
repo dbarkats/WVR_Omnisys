@@ -5,16 +5,16 @@ import datetime
 import signal
 from optparse import OptionParser
 
-def checkProcess(processName,debug=False,dryrun=True):
+def checkProcess(processName,debug=False, force=False):
     """
     given processName, check if it's present and if it was started in last hour, leave it, if it was started more than 1 hour ago, kill it
     processName should be 'wvrObserve1hr.py', or 'wvrNoise.py'
     """
-
-    # check if a process called wvrObserve.py or wvrNoise.py is present
-    cmd = 'ps -elf |grep  %s |grep -v grep'%processName
+    # check if a process called "processName" is present
+    cmd = 'ps -elf |grep  %s |grep -v grep|grep -v checkProcess.py'%processName
     if debug: print cmd
-    # cmd = 'pgrep -if "python KeepSerPortAlive.py" "python KeepSerPortAliveNoise"'
+
+    
     results=os.popen(cmd).read()
     if debug: print results
 
@@ -32,9 +32,13 @@ def checkProcess(processName,debug=False,dryrun=True):
             # get start times
             hourStarted = res.split()[11][0:2]
             if int(hourStarted) == lasthour:
-                print "Killing the following process: %s because it was started in the last hour"%pid
-                print pid, res
-                os.kill(int(pid),signal.SIGTERM)
+                if (force):
+                    print "Killing the following process: %s because it was started in the last hour"%pid
+                    print pid, res
+                    os.kill(int(pid),signal.SIGTERM)
+                else:
+                    print "Not killing the following process: %s because Force = False. Use -F option to set Force = True"%pid
+                    print pid,res
             else:
                 print "Leaving the following process: %s because it was started within last hour"%pid
                 print pid, res
@@ -58,5 +62,11 @@ if __name__ == '__main__':
                       default='wvrObserve1hr.py',
                       help="name of process to search and destroy if started more than 1 hr ago. Default: wvrObserve1hr.py")
 
+    parser.add_option("-F",
+                      dest="force",
+                      action="store_true",
+                      default=False,
+                      help="-F, sets force = True and enables to kill process if needed. Default = False")
+
     (options, args) = parser.parse_args()
-    checkProcess(options.processName,debug=options.debug)
+    checkProcess(options.processName,debug=options.debug, force=options.force)

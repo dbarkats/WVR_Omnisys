@@ -8,7 +8,7 @@ import wvrComm
 import wvrPeriComm
 import StepperCmd
 import datetime
-import SerialPIDTempsReader
+import SerialPIDTempsReader_v2 as sr
 import threading
 import logWriter
 import checkProcess
@@ -40,9 +40,9 @@ if __name__ == '__main__':
     
     parser.add_option("-d",
                       dest="duration",
-                      default = 3300,
+                      default = 3400,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
     
     parser.add_option("-e",
                       dest="elevation",
@@ -54,7 +54,7 @@ if __name__ == '__main__':
                       dest="speed",
                       default = 12.0,
                       type= float,
-                      help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 12.5 deg/s")
+                      help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 12.0 deg/s")
     
     parser.add_option("-z",
                       dest="azimuth",
@@ -68,9 +68,17 @@ if __name__ == '__main__':
                       default = False,
                       help="-o, to do only the initial skyDip.")
 
+    parser.add_option("-c",
+                      dest='complete',
+                      action="store_true",
+                      default=False,
+                      help="-c, will store a complete set of registers for the slopw file instead of a limited set of registers. Useful for troubleshooting. Default=False")
+
 (options, args) = parser.parse_args()
 
-checkProcess.checkProcess('wvrObserve1hr.py') #Checks that no other intances of wvrObserve1hr.py are already running
+#Checks that no other intances of wvrObserve1hr.py are already running
+checkProcess.checkProcess('wvrObserve1hr.py',force=True)
+
 #### DEFINE VARIABLES #########
 script = "wvrObserve1hr.py"
 skyDipDuration =  60  # in seconds
@@ -80,7 +88,9 @@ azScanningDuration = options.duration # in seconds
 azScanningSpeed = options.speed # in deg/s
 
 # Common variables are defined in wvrRegList
-
+if options.complete:
+    reg_slow = reg_slow_complete
+    
 #### START RUNNING skyDip part ###############
 
 ts = time.strftime('%Y%m%d_%H%M%S')
@@ -108,8 +118,8 @@ wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
 lw.write("Resetting and Homing Az stage")
 wvrAz.stopRotation()
 wvrAz.resetAndHomeRotStage()
-#lw.write("Slewing to az=%3.1f"%skyDipAz)
-#wvrAz.slewAz(skyDipAz)
+lw.write("Slewing to az=%3.1f"%skyDipAz)
+wvrAz.slewAz(skyDipAz)
 
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
@@ -124,7 +134,7 @@ daq = wvrDaq.wvrDaq(logger=lw,  wvr=wvrC, peri=wvrAz, elstep=wvrEl,
                     prefix = prefix, debug=False)
 
 lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 lw.write("start PIDtemps acquisition in the background")
 tPid1 = threading.Thread(target=rsp.loopNtimes,args=(skyDipDuration + 2,))
 tPid1.start()
@@ -179,10 +189,10 @@ daq.setComments('Az Scanning Observation')
 daq.setLogger(lw)
 
 lw.write("create PIDTemps object")
-rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
+rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
 
 lw.write("start PIDtemps acquisition in the background")
-tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration+5,))
+tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration,))
 tPid2.start()
 time.sleep(1)
 
@@ -200,6 +210,6 @@ wvrEl.closePort()
 lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
-print "Done with scanAz part, finished with script at %s"%(ts)
+print "Done with scanAz part, finished with script at %s \n"%(ts)
 sys.stdout.flush()
 

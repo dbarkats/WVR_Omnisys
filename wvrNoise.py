@@ -9,7 +9,7 @@ This script will save 1 set of files:
 """
 import os,sys
 from wvrRegList import *
-import SerialPIDTempsReader
+import SerialPIDTempsReader_v2 as sr
 import wvrComm
 import wvrPeriComm
 import StepperCmd
@@ -36,9 +36,9 @@ if __name__ == '__main__':
 
     parser.add_option("-d",
                       dest="duration",
-                      default = 3300,
+                      default = 3400,
                       type= int,
-                      help="-d, duration of scanAz observation phase in seconds. Default = 3300s")
+                      help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
 
     parser.add_option("-e",
                       dest="elevation",
@@ -52,11 +52,16 @@ if __name__ == '__main__':
                      default=True,
                      help = "-w, used to only acquire wvr daq data and skips/ignors all commands to az/el axis or PIDTemp")
 
-
+    parser.add_option("-c",
+                      dest='complete',
+                      action="store_true",
+                      default=False,
+                      help="-c, will store a complete set of registers for the slopw file instead of a limited set of registers. Useful for troubleshooting. Default=False")
+    
 (options, args) = parser.parse_args()
 wvrOnly = options.wvrOnly
 
-checkProcess.checkProcess('wvrNoise.py') #Checks that not other instances of wvrNoise.py are already running
+checkProcess.checkProcess('wvrNoise.py', force=True) #Checks that not other instances of wvrNoise.py are already running
 
 #### VARIABLES #####
 script = "wvrNoise.py"
@@ -64,6 +69,9 @@ El = options.elevation # in deg
 duration = options.duration # in sec
 
 # Common variables are defined in wvrRegList
+if options.complete:
+    reg_slow = reg_slow_complete
+    
 ######################
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_Noise'
@@ -73,10 +81,10 @@ lw.write("Running %s"%script)
 # Also print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
 sys.stdout.flush()
-mypid = os.getpid()
-pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
-print "PID: %s, NICE level: %s "%(mypid, pri)
-sys.stdout.flush()
+#mypid = os.getpid()
+#pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
+#print "PID: %s, NICE level: %s "%(mypid, pri)
+#sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -111,7 +119,7 @@ daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl,
 
 if wvrOnly:
     lw.write("create PIDTemps object")
-    rsp = SerialPIDTempsReader.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+    rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 
     # Acquire PID Temp data
     lw.write("start PIDtemps acquisition in the background")
@@ -129,5 +137,5 @@ if wvrOnly:
     wvrAz.closeSerialPort()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
-print "Done with %s script at %s"%(script,ts)
+print "Done with %s script at %s \n"%(script,ts)
 sys.stdout.flush()

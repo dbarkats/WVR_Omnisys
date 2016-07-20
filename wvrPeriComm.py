@@ -28,7 +28,6 @@ class wvrPeriComm():
     def __init__(self, logger=None, debug=True):
 
         self.port = "/dev/newportAzAxis"
-        self.port = "/dev/ttyUSB0"
         self.baudrate = 57600
         self.debug=debug
         self.ser = serial.Serial()
@@ -37,7 +36,7 @@ class wvrPeriComm():
         self.lock = threading.Lock()
         self.azPos = -9999.9999
         self.openSerialPort()
-
+        
     def setLogger(self,logger=None):
         prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         if logger == None:
@@ -98,19 +97,19 @@ class wvrPeriComm():
 
     def homeRotStage(self):
         state = '1E'
-        timeout= 18.5
-        homeCount = 0
+        #timeout= 18.5
+        #homeCount = 0
         if self.lock.acquire():
             self.lw.write("Homing Rotation stage (timeout=18.5 s) ...")
             self.ser.write(MSG_HOME)
             self.isHomed = True
             self.lock.release()
-            while (state == '1E') or (homeCount <= timeout):
+            while (state == '1E'): # or (homeCount <= timeout):
                resp =  self.command('1ts')
                resp= resp.split('1TS')[1].split('\r')[0]
                state = resp[-2:]
                time.sleep(1)
-               homeCount = homeCount + 1
+               #homeCount = homeCount + 1
             self.getError()
         else:
             print "could not acquire lock (wvrPeriComm.homeRotStage)"

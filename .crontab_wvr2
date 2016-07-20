@@ -1,0 +1,8 @@
+MAILTO=dbarkats@cfa.harvard.edu
+SHELL=/bin/bash
+
+00 1,2,3,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23 * * *  nice -n -19 $HOME/wvr_pipeline/wvrObserve1hr.py &>>  $HOME/wvr_data/wvrLog.txt
+00 0,4,8,12,16,20 * * * nice -n -19 $HOME/wvr_pipeline/wvrNoise.py &>> $HOME/wvr_data/wvrLog.txt
+10 * * * *   $HOME/wvr_pipeline/wvrArchiveData.py
+26 01 * * *  $HOME/wvr_pipeline/NOAA_UDP_client.py
+00 10 * * *  $HOME/wvr_pipeline/wvrAncillaryData.py
