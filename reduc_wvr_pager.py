@@ -8,7 +8,6 @@ import sys
 import matplotlib as mpl
 mpl.use('Agg')
 import wvrAnalysis
-wvrA = wvrAnalysis.wvrAnalysis()
 from pylab import *
 from datetime import datetime
 import os
@@ -22,9 +21,19 @@ class reduc_wvr_pager():
         '''
         self.host = socket.gethostname()
         self.home = os.getenv('HOME')
-        self.reducDir = self.home+'/wvr_reducplots/'
-        self.dataDir = self.home+'/wvr_data/'
+       
+    def setWvrUnit(self,unit):
+        print "### Analyzing unit %s ..."%unit
+        self.unit = unit
+        self.setDirs()
+
+    def setDirs(self):
+
+        self.reducDir = self.home+'/%s_reducplots/'%self.unit
+        self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
+        
+        self.wvrA = wvrAnalysis.wvrAnalysis(self.unit)
 
     def getcutFileList(self):
         print "loading cutFile list..."
@@ -90,7 +99,7 @@ class reduc_wvr_pager():
         # untar files as necessary
         for f in fileList:
             if (self.host != 'wvr1') and (self.host != 'wvr2'):
-                if not os.path.exists(f.replace('.tar.gz','_slow.txt')):
+                if not os.path.exists(f.replace('.tar.gz','_log.txt')):
                     print "Untarring: %s"%f
                     os.system('tar -xzvf %s'%f) # untar files
                     
@@ -127,10 +136,10 @@ class reduc_wvr_pager():
                         continue            
 
                 print "Making 1hr Wx plots for %s"%f
-                wvrA.plotWx([f], inter=False)
+                self.wvrA.plotWx([f], inter=False)
                     
                 print "Making 1hr Hk plots for %s"%f
-                wvrA.plotHk([f], inter=False)
+                self.wvrA.plotHk([f], inter=False)
 
                 print ''
                 if f[0:15] in self.cutFileListPIDTemp:
@@ -138,10 +147,10 @@ class reduc_wvr_pager():
                     continue
                 else:
                     print "Making 1hr PIDTemps plot for %s"%f
-                    wvrA.plotPIDTemps([f], fignum=4,inter=False)
+                    self.wvrA.plotPIDTemps([f], fignum=4,inter=False)
 
                 #print "Making 1hr Fast plot for %s"%f
-                #wvrA.plotFastData([f],inter=False )
+                #self.wvrA.plotFastData([f],inter=False )
 
                 close("all")
                 
@@ -164,19 +173,19 @@ class reduc_wvr_pager():
                 wxFileList = self.makeFileListFromWx(start=day,end=day)
                 if size(wxFileList) != 0:
                     print "Making 24hr Wx plot for %s"%day
-                    wvrA.plotWx(wxFileList,inter=False)
+                    self.wvrA.plotWx(wxFileList,inter=False)
                 
                 print "Making 24hr Hk plot for %s"%day
-                wvrA.plotHk(fileListOneDay,inter=False)
+                self.wvrA.plotHk(fileListOneDay,inter=False)
 
                 #print "Making 24hr Fast plot for %s"%day
-                #wvrA.plotFastData(fileListOneDay,inter=False)
+                #self.wvrA.plotFastData(fileListOneDay,inter=False)
             
                 print "Making 24hr PIDTemps plot for %s"%day
                 for cutf in self.cutFileListPIDTemp:
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
-                wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
+                self.wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
 
                 self.makeSymlinks(day)
                 
@@ -189,7 +198,7 @@ class reduc_wvr_pager():
             for t in plottypes:
                 plotname = '%s_%s00_%s.png'%(day,h,t)
                 linkname = plotname.replace('_%s00_'%h,'_%s01_'%h)
-                cmd = 'ln -s %s %s'%(linkname, plotname)
+                cmd = 'ln -s %s %s'%(plotname, linkname)
                 #print cmd
                 os.system(cmd)
         os.chdir(cwd)
@@ -326,7 +335,7 @@ class reduc_wvr_pager():
     def getDailyPIDTempsStats(self, start = None, verb = True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, sample, wx, temps, input, output = wvrA.readPIDTempsFile(fl,verb=verb)
+        utTime, sample, wx, temps, input, output = self.wvrA.readPIDTempsFile(fl,verb=verb)
 
         print ''
         print '#############################################'
@@ -342,7 +351,7 @@ class reduc_wvr_pager():
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, tslow, d = wvrA.readStatFile(fl,verb=verb)
+        utTime, tslow, d = self.wvrA.readStatFile(fl,verb=verb)
 
         keys = d.dtype.fields.keys()
         print ''

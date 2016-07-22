@@ -40,5 +40,5 @@ if __name__ == '__main__':
     rwp.checkUniqueProcess(verb=verb)
     rwp.checkFileSizeStatus(prefix='Wx',thres=0,verb=verb)
     rwp.checkFileSizeStatus(time=1,prefix='Tilt',thres=0, verb=verb)
-    rwp.getDailyPIDTempsStats(today,verb = verb)
-    rwp.getDailyStatStats(today, verb = verb)
+    rwp.getDailyPIDTempsStats(start=today,verb = verb)
+    rwp.getDailyStatStats(start=today, verb = verb)

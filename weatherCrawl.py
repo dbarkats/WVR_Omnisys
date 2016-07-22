@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
-import weatherLib as Wx
+import datetime
 from optparse import OptionParser
-
 if __name__ == '__main__':
     usage = '''
  
@@ -28,11 +27,20 @@ if __name__ == '__main__':
 
 (options, args) = parser.parse_args()
 if options.start == '':  
-    parser.error('Start date not given')
+    now = datetime.datetime.now()
+    start = now.replace(day=1).strftime('%Y%m%d')
+    print 'Start date not given, starting at start of month %s'%start
+    
+else:
+    start= options.start
 if options.end == '':  
-    parser.error('End date not given')
+    end = datetime.datetime.now().strftime('%Y%m%d')
+    print 'End date not given, ending at today: %s'%end
+else:
+    end = options.end
 
-wx = Wx.WxCrawler(expt = options.expt)
-wx.crawlMakeWxFiles(options.start, options.end)
+import weatherLib as Wx
+wx = Wx.WeatherLib(expt = options.expt)
+wx.crawlMakeWxFiles(start, end)
 
 print "Finished with  weatherCrawler.py"

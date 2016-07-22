@@ -10,19 +10,30 @@ from matplotlib.dates import DateFormatter
 
 class wvrAnalysis():
     
-    def __init__(self):
+    def __init__(self, unit=None):
         """
         """       
         hostname = socket.gethostname()
-        if hostname.startswith('wvr2'):
-            self.loc = 'summit'
-        elif hostname == 'wvr1':
-            self.loc = 'pole'
         self.home = os.getenv('HOME')
-        self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
-        self.reducDir = self.home+'/wvr_reducplots'
+        if unit == None:
+            if hostname.startswith('wvr2'):
+                self.unit = 'wvr2'
+            elif hostname == 'wvr1':
+                self.unit = 'wvr1'
+        else:
+            if unit == 'wvr1':
+                self.unit = 'wvr1'
+            else:
+                self.unit = 'wvr2'
+
+        self.setDirs()
+
+    def setDirs(self):
+
+        self.reducDir = self.home+'/%s_reducplots/'%self.unit
+        self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
-        
+
     def readPIDTempsFile(self, fileList, verb=True):
 
         fileList = au.aggregate(fileList)
@@ -97,21 +108,21 @@ class wvrAnalysis():
     
     def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
 
-        #TODO: add deglitching based on outer 4 channels
+        #TODO: add deglitching based on outer 4 temp channels
         
         legend_pole=['Inside Air','PID Input','Op-amp','Gnd plate',
-                     'heater exhaust','24V PS','E pink foam',
-                     'Arduino holder','El step mtr','48V PS',
+                     'heat exh','24V PS','E pink foam',
+                     'Arduino','El mtr','48V PS',
                      'Az stage', 'Outside 1','Outside 2']
         legend_summit=['Inside Air','PID Input','Op-amp','El lim sw',
                        'heat exh','24V PS','E foam',
                        'Arduino','El mtr','48V PS',
                        'Az stage', 'Up bspl','Outside 1']
-        if self.loc == 'pole':
+        if self.unit == 'wvr1':
             leg = legend_pole
-        elif self.loc == 'summit':
+        elif self.unit == 'wvr2':
             leg = legend_summit
-        if verb: print "Making plots for location: %s"%self.loc
+        if verb: print "Making plots for location: %s"%self.unit
         if inter:
             ion()
         else:
@@ -121,7 +132,7 @@ class wvrAnalysis():
         nfiles = size(fileList)
         if verb: print "Loading %d PIDTemps files"%nfiles
         ut, sample, wx, temps, input, output = self.readPIDTempsFile(fileList)
-        if size(sample) == 1: return
+        if size(sample) <= 30: return
         
         fname = fileList[0].split('_')
         if size(fname)<3:
@@ -155,10 +166,11 @@ class wvrAnalysis():
         axhline(19,color='r')
         grid(color='gray')
         ylabel("PID Temp [C]")
-        ylim([17,25])
+        ylim([10,25])
         subpl.set_xlim(trange)
         subpl.set_xticklabels('')
         legend([leg[1],'setpoint'],bbox_to_anchor=leg_loc, prop={'size':10})
+
         subpl=subplot(4,1,2)
         plot_date(ut,au.smooth(output,20),fmt='b-')
         ylabel('PID output [bits] (b)')
@@ -181,16 +193,16 @@ class wvrAnalysis():
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
         grid(color='gray')
-        ylim([15,31])
+        ylim([0,31])
         subpl.set_xticklabels('')
         subpl.set_xlim(trange)
         legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
                     
         subpl=subplot(4,1,4)
         legw=[]
-        if self.loc == 'pole':
+        if self.unit == 'wvr1':
             outtemp = [10,11]
-        elif self.loc == 'summit':
+        elif self.unit == 'wvr2':
             outtemp = [11]
             if wx is not None:
                 plot_date(ut,wx['tempC'],'r-')
@@ -381,16 +393,17 @@ class wvrAnalysis():
             if verb: print "Reading %s"%filename
             # to deal with files at start of season with missing AZ/EL columns
             testRead = open(self.dataDir+filename,'r').readlines()[3]
-            if 'AZ' in testRead:
-                if "VOLT" in testRead:
-                    if 'BE_BIAS0' in testRead:
-                        e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-                    else:
-                        e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)  
-                else:
-                    e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            else:
-                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype=None,invalid_raise = False)
+            #if 'AZ' in testRead:
+            #    if "VOLT" in testRead:
+            #        if 'BE_BIAS0' in testRead:
+            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+            #        else:
+            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)  
+            #    else:
+                    #e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+            # else:
+            #    e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
             d.append(e)
         if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)

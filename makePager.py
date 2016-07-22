@@ -27,7 +27,18 @@ if __name__ == '__main__':
                       default=2,
                       help="-t, how many days back to regenerate the plots.  Default =2")
     
+    parser.add_option("-l",
+                      dest = "unit",
+                      default="wvr1",
+                      help="-l, option to choose which WVR data to analyze. Only relevant on odyssey. Choose -l wvr1 (Pole) or -l wvr2 (Summit). Default = wvr1")
+
     (options, args) = parser.parse_args()
+    unit = options.unit
+    if (unit != 'wvr1') and (unit != 'wvr2'):
+        print "unit must be wvr1 or wvr2, exiting"
+        exit()
+
+    up = options.update
 
     rwp = rw.reduc_wvr_pager()
 
@@ -37,7 +48,9 @@ if __name__ == '__main__':
         s = nm2.strftime('%Y%m%d')
     else:
         s = options.start
-    up = options.update
+
+    rwp.setWvrUnit(unit)
     rwp.make_reduc_plots(update=up,start=s,do24hr=True)
     rwp.make_reduc_plots(update=up,start=s,do1hr=True, do24hr=False)
     rwp.updatePager()
+
