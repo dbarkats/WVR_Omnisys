@@ -28,7 +28,6 @@ class reduc_wvr_pager():
         self.setDirs()
 
     def setDirs(self):
-
         self.reducDir = self.home+'/%s_reducplots/'%self.unit
         self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
@@ -204,12 +203,43 @@ class reduc_wvr_pager():
         os.chdir(cwd)
         
 
+    def getDevices(self, verb=True):
+        """
+        check for the presence of arduino and newport devices.
+        """
+        count = 0
+        cmd = 'ls /dev/arduino* /dev/newport*'
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+        aout,aerr = p.communicate()
+        if (verb): print aout,aerr
+        b = aout.split('\n')
+        if '/dev/arduinoPidTemp' in b[0]:
+            print "arduinoPidTemp: PRESENT"
+            count = count+1
+        else:
+            print "arduinoPidTemp: MISSING"
+        if '/dev/arduinoElAxis' in b[0]:
+            print "arduinoElAxis: PRESENT"
+            count = count+1
+        else:
+            print "arduinoElAxis: MISSING"
+        if '/dev/newportAzAxis' in b[0]:
+            print "arduinoAzAxis: PRESENT"
+            count = count+1
+        else:
+             print "arduinoAzAxis: MISSING"
+        if count == 3:
+            print "DeviceCheck: PASS"
+            return 1
+        else:
+            print "DeviceCheck: FAIL"
+            return 0
+            
     def getNtpStat(self,verb=True):
         """
         return the result of ntpstat
 
         """
-       
         cmd = 'ntpstat'
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()

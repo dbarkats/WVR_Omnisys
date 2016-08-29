@@ -32,7 +32,7 @@ if __name__ == '__main__':
     else:
         today = options.start
 
-
+    rwp.getDevices(verb=verb)
     rwp.getNtpStat(verb=verb)
     rwp.getCrontabStatus(verb=verb)
     rwp.checkDataStatus(verb = verb)
