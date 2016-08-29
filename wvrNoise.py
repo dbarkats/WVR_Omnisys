@@ -62,6 +62,7 @@ if __name__ == '__main__':
 wvrOnly = options.wvrOnly
 
 checkProcess.checkProcess('wvrNoise.py', force=True) #Checks that not other instances of wvrNoise.py are already running
+checkProcess.checkProcess('wvrObserve1hr.py', force=True) #Checks that not other instances of wvrObserve1hr.py are already running
 
 #### VARIABLES #####
 script = "wvrNoise.py"
@@ -79,12 +80,11 @@ lw = logWriter.logWriter(prefix, options.verbose)
 lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
-print "Starting %s at %s"%(script,ts)
+mypid = os.getpid()
+print "Starting %s at %s, PID: %s"%(script,ts, mypid)
 sys.stdout.flush()
-#mypid = os.getpid()
 #pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
 #print "PID: %s, NICE level: %s "%(mypid, pri)
-#sys.stdout.flush()
 
 lw.write("create wvrComm object")
 wvrC = wvrComm.wvrComm(debug=False)
@@ -124,6 +124,7 @@ if wvrOnly:
     # Acquire PID Temp data
     lw.write("start PIDtemps acquisition in the background")
     tPid = threading.Thread(target=rsp.loopNtimes,args=(duration,))
+    tPid.daemon = True
     tPid.start()
     time.sleep(1)
 

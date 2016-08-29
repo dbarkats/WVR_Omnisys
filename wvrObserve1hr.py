@@ -78,6 +78,7 @@ if __name__ == '__main__':
 
 #Checks that no other intances of wvrObserve1hr.py are already running
 checkProcess.checkProcess('wvrObserve1hr.py',force=True)
+checkProcess.checkProcess('wvrNoise.py',force=True)
 
 #### DEFINE VARIABLES #########
 script = "wvrObserve1hr.py"
@@ -92,14 +93,14 @@ if options.complete:
     reg_slow = reg_slow_complete
     
 #### START RUNNING skyDip part ###############
-
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_skyDip'
 lw = logWriter.logWriter(prefix, options.verbose)
 lw.write("Running %s"%script)
 
 # Also print to standard output file in case we get messages going to it
-print "Starting %s at %s"%(script,ts)
+mypid = os.getpid()
+print "Starting %s at %s, PID: %s"%(script,ts, mypid)
 sys.stdout.flush()
 
 lw.write("create wvrComm object")
@@ -137,11 +138,13 @@ lw.write("create PIDTemps object")
 rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 lw.write("start PIDtemps acquisition in the background")
 tPid1 = threading.Thread(target=rsp.loopNtimes,args=(skyDipDuration + 2,))
+tPid1.daemon = True
 tPid1.start()
 time.sleep(1)
 
 lw.write("start wvr data acquisition in the background")
 tdaq1 = threading.Thread(target=daq.recordData,args=(skyDipDuration,))
+tdaq1.daemon = True
 tdaq1.start()
 time.sleep(1)
 
@@ -170,6 +173,7 @@ while(tdaq1.isAlive()):
 if options.onlySkydip:
     ts = time.strftime('%Y%m%d_%H%M%S')
     lw.write("Finished skidip, ending script now at %s"%ts)
+    lw.close()
     wvrEl.closePort()
     wvrAz.closeSerialPort()
     exit()
@@ -193,6 +197,7 @@ rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=F
 
 lw.write("start PIDtemps acquisition in the background")
 tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration,))
+tPid2.daemon = True
 tPid2.start()
 time.sleep(1)
 

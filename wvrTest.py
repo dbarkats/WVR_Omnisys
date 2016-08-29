@@ -12,6 +12,21 @@ import logWriter
 import threading
 from optparse import OptionParser
 
+
+def infiniteLoop1(Nsecs):
+    dt = 0
+    while(dt < Nsecs):
+        print "Still in Loop1. Elapsed time = %f"%dt
+        dt = dt + 1
+        time.sleep(1)
+
+def infiniteLoop2(Nsecs):
+    dt = 0
+    while(dt < Nsecs):
+        print "Still in Loop2. Elapsed time = %f"%dt
+        dt = dt + 1
+        time.sleep(1)
+
 if __name__ == '__main__':
     usage = '''
  
@@ -40,12 +55,12 @@ print "PID:",mypid
 pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
 print "NICE:",pri
 sys.stdout.flush()
-time.sleep(10)
+time.sleep(2)
 
 pri = os.popen('ps -p %s -o pri'%mypid).read().split()[1]
 print "NICE:",pri
 sys.stdout.flush()
-time.sleep(10)
+time.sleep(2)
 
 lw.write("create wvrComm object")
 
@@ -66,9 +81,17 @@ lw.write("create PIDTemps object")
 # Acquire data
 lw.write("start PIDtemps acquisition in the background")
 time.sleep(1)
+tdaq1 = threading.Thread(target=infiniteLoop1,args=(2000,))
+tdaq1.daemon=True
+tdaq1.start()
+time.sleep(1)
 
+print tdaq1.isAlive()
 lw.write("start wvr data acquisition in the foreground")
-
+time.sleep(1)
+print tdaq1.isAlive()
+time.sleep(10)
+print tdaq1.isAlive()
 # Clean up
 lw.close()
 

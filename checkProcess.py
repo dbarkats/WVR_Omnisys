@@ -32,7 +32,7 @@ def checkProcess(processName, debug=False, force=False):
             hourStarted = res.split()[11][0:2]
             if int(hourStarted) == lasthour:
                 if (force):
-                    print "Killing the following process: %s because it was started in the last hour"%pid
+                    print "Killing the following process: %s because it was started more than 1 hour ago"%pid
                     print pid, res
                     os.kill(int(pid),signal.SIGTERM)
                 else:
