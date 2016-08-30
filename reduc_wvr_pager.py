@@ -21,13 +21,16 @@ class reduc_wvr_pager():
         '''
         self.host = socket.gethostname()
         self.home = os.getenv('HOME')
-       
+        if 'wvr2' in self.host:
+            self.setWvrUnit('wvr2')
+
     def setWvrUnit(self,unit):
         print "### Analyzing unit %s ..."%unit
         self.unit = unit
         self.setDirs()
 
     def setDirs(self):
+
         self.reducDir = self.home+'/%s_reducplots/'%self.unit
         self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
@@ -213,17 +216,17 @@ class reduc_wvr_pager():
         aout,aerr = p.communicate()
         if (verb): print aout,aerr
         b = aout.split('\n')
-        if '/dev/arduinoPidTemp' in b[0]:
+        if '/dev/arduinoPidTemp' in b:
             print "arduinoPidTemp: PRESENT"
             count = count+1
         else:
             print "arduinoPidTemp: MISSING"
-        if '/dev/arduinoElAxis' in b[0]:
+        if '/dev/arduinoElAxis' in b:
             print "arduinoElAxis: PRESENT"
             count = count+1
         else:
             print "arduinoElAxis: MISSING"
-        if '/dev/newportAzAxis' in b[0]:
+        if '/dev/newportAzAxis' in b:
             print "arduinoAzAxis: PRESENT"
             count = count+1
         else:
