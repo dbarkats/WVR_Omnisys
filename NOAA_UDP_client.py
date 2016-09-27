@@ -22,7 +22,7 @@ class Client(asyncore.dispatcher, object):
     disconnect, it can be forcefully killed with SIGKILL (kill -9).
     """
     buffer_lock = threading.Lock()
-    pid_file = "/var/run/NOAA_UDP_client.pid"
+    pid_file = "/home/dbarkats/.NOAA_UDP_client.pid"
     def __init__(self, port=2101, ip='192.168.1.39', warn_interval=300):
         super(Client, self).__init__()
         self.warn_interval = warn_interval
