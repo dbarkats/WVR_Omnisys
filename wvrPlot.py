@@ -5,10 +5,12 @@ import time
 import math
 import logWriter
 import glob
-import analysisUtils as au
 from matplotlib.dates import DateFormatter
 
-class wvrAnalysis():
+import analysisUtils as au
+import wvrReadData as wrd
+
+class wvrPlot():
     
     def __init__(self, unit=None):
         """
@@ -27,84 +29,13 @@ class wvrAnalysis():
                 self.unit = 'wvr2'
 
         self.setDirs()
+        self.read = wrd.wvrReadData(self.unit)
 
     def setDirs(self):
 
         self.reducDir = self.home+'/%s_reducplots/'%self.unit
         self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
-
-    def readPIDTempsFile(self, fileList, verb=True):
-
-        fileList = au.aggregate(fileList)
-        
-        fl=[]
-        for f in fileList:
-            fl.append(f.replace('.tar.gz','_PIDTemps.txt'))
-            
-        d=[]
-        for filename in fl:
-            if os.path.isfile(self.dataDir+filename):
-                if verb: print "Reading %s"%filename
-                data = genfromtxt(self.dataDir+filename,delimiter='',
-                                  dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f',
-                                  invalid_raise = False)
-            else:
-                if verb: print "WARNING: %s file missing. skipping... "%filename
-                continue
-            d.append(data)
-
-        if size(d) == 0: return 0,0,0,0,0,0
-        d = concatenate(d,axis=0)
-        utTime = []
-        for tstr in d['f0']:
-            utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-        sample=arange(size(d))
-        t0=d['f2']
-        input=d['f3']
-        t1=d['f4']
-        t2=d['f5']
-        t3=d['f6']
-        t4=d['f7']
-        t5=d['f8']
-        t6=d['f9']
-        t7=d['f10']
-        t8=d['f11']
-        t9=d['f12']
-        t10=d['f13']
-        t11=d['f14']
-        output=d['f15']
-        temps=vstack([t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11]).T
-
-        utwx, wx = self.readWxFile(fileList,verb=verb)
-        if utwx == None:
-            wxnew = None
-        else:
-            wxnew = self.interpDatetime(utTime, utwx, wx)
-        
-        return utTime, sample, wxnew, temps, input, output
-
-    def interpDatetime(self,utTime, utwx, wx):
-        """
-        given a datetime array utTime, 
-        this will interpolate utwx and wx to utTime
-        """
-        wxnew = empty(shape(utTime),dtype=wx.dtype.descr)
-        keys = wx.dtype.fields.keys()
-        t1 = []
-        t2 = []
-        tref = datetime.datetime(1970,1,1)
-        for t in utTime:
-            t1.append((t-tref).total_seconds())
-        for t in utwx:
-            t2.append((t- tref).total_seconds())
-        for k in keys:
-            if k == 'ut':
-                wxnew[k]=utTime
-            else:
-                wxnew[k]= interp(t1,t2,wx[k])
-
-        return wxnew
     
     def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
 
@@ -131,7 +62,7 @@ class wvrAnalysis():
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         if verb: print "Loading %d PIDTemps files"%nfiles
-        ut, sample, wx, temps, input, output = self.readPIDTempsFile(fileList)
+        ut, sample, wx, temps, input, output = self.read.readPIDTempsFile(fileList)
         if size(sample) <= 30: return
         
         fname = fileList[0].split('_')
@@ -159,7 +90,7 @@ class wvrAnalysis():
         figure(fignum, figsize=figsize)
         clf()
 
-        subpl=subplot(4,1,1)
+        subpl=subplot(5,1,1)
         plot_date(ut,au.smooth(input,20),fmt='g.-')
         m = mean(temps[:,0])
         s = std(temps[:,0])
@@ -171,7 +102,7 @@ class wvrAnalysis():
         subpl.set_xticklabels('')
         legend([leg[1],'setpoint'],bbox_to_anchor=leg_loc, prop={'size':10})
 
-        subpl=subplot(4,1,2)
+        subpl=subplot(5,1,2)
         plot_date(ut,au.smooth(output,20),fmt='b-')
         ylabel('PID output [bits] (b)')
         ylim([-10,4300])
@@ -188,7 +119,7 @@ class wvrAnalysis():
         subpl.set_xticklabels('')
         subplots_adjust(hspace=0.01)
         
-        subpl = subplot(4,1,3)
+        subpl = subplot(5,1,3)
         for i in range(1,11):
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
@@ -198,7 +129,7 @@ class wvrAnalysis():
         subpl.set_xlim(trange)
         legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
                     
-        subpl=subplot(4,1,4)
+        subpl=subplot(5,1,4)
         legw=[]
         if self.unit == 'wvr1':
             outtemp = [10,11]
@@ -209,7 +140,29 @@ class wvrAnalysis():
                 legw.append('NOAA')
         for i in outtemp:
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
-            legw.append(legend_summit[i+1])
+            legw.append(leg[i+1])
+        ylabel('Outside Temp Zoom [C]')
+        xlabel('UT time [s]')
+        subpl.set_xlim(trange)
+        subpl.xaxis.set_major_formatter(timefmt)
+        grid(color='gray')
+        legend(legw,bbox_to_anchor=(leg_loc[0],leg_loc[1]-.7), prop={'size':10})
+
+        subpl=subplot(5,1,5)
+        legw=[]
+        if self.unit == 'wvr1':
+            outtemp = [10,11]
+            yl = [-80,-15]
+        elif self.unit == 'wvr2':
+            outtemp = [11]
+            yl = [-65,0]
+            if wx is not None:
+                plot_date(ut,wx['tempC'],'r-')
+                legw.append('NOAA')
+        for i in outtemp:
+            plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
+            legw.append(leg[i+1])
+        ylim(yl)
         ylabel('Outside Temp [C]')
         xlabel('UT time [s]')
         subpl.set_xlim(trange)
@@ -221,34 +174,12 @@ class wvrAnalysis():
         if verb: print "Saving %s.png"%title
         savefig(title+'.png')
 
+
         if not inter:
             close('all')
         self.movePlotsToReducDir()
 
-    def readFastFile(self,fileList,verb=True):
-
-        fileList = au.aggregate(fileList)
-        nfiles = size(fileList)
-        fl=[]
-        for f in fileList:
-            fl.append(f.replace('.tar.gz','_fast.txt'))
-
-        d=[]
-        for k,filename in enumerate(fl):
-            if verb: print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
-            e = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            d.append(e)
-        d = concatenate(d,axis=0)
-
-        tfast =  d['TIMEWVR']
-        elfast = d['EL']
-        azfast = d['AZ']
-        utfast = []
-        for tstr in d['TIME']:
-            utfast.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-        utfast = array(utfast)
-        return utfast,tfast,azfast,elfast,d
- 
+    
     def getIndex(self,d):
         freqs = ['CH0','CH1','CH2','CH3']
         phases = ['C','A','H','B']
@@ -270,7 +201,7 @@ class wvrAnalysis():
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         if verb: print "Loading %d fast files"%nfiles
-        utfast,tfast,azfast,elfast,d = self.readFastFile(fileList)
+        utfast,tfast,azfast,elfast,d = self.read.readFastFile(fileList)
         if size(tfast) == 1: return
 
         chans, q = self.getIndex(d)
@@ -379,58 +310,7 @@ class wvrAnalysis():
                 close('all')
             self.movePlotsToReducDir()
      
-    def readSlowFile(self, fileList,verb=True):
-        
-        fileList = au.aggregate(fileList)
-        fl=[]
-        for f in fileList:
-            fl.append(f.replace('.tar.gz','_slow.txt'))
-
-        d=[]
-        for filename in fl:
-            if not(os.path.isfile(self.dataDir+filename)):
-                continue
-            if verb: print "Reading %s"%filename
-            # to deal with files at start of season with missing AZ/EL columns
-            testRead = open(self.dataDir+filename,'r').readlines()[3]
-            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype=None,invalid_raise = False)
-            #if 'AZ' in testRead:
-            #    if "VOLT" in testRead:
-            #        if 'BE_BIAS0' in testRead:
-            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            #        else:
-            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)  
-            #    else:
-                    #e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            # else:
-            #    e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            d.append(e)
-        if size(d) == 0: return 0,0,0,0,0,0
-        d = concatenate(d,axis=0)
-
-        keys = d.dtype.fields.keys()
-        utTime = []
-        for tstr in d['TIME']:
-            # try/except to deal with early season change of format
-            try:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-            except:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
-
-        tslow = d['TIMEWVR']
-        if 'AZ' in keys:
-            el = d['EL']
-            az = d['AZ']
-        else:
-            az = zeros(size(utTime))
-            el= zeros(size(utTime))
-        tsrc0 = d['TSRC0']
-        tsrc1 = d['TSRC1']
-        tsrc2 = d['TSRC2']
-        tsrc3 = d['TSRC3']
-        tsrc= np.vstack([tsrc0,tsrc1,tsrc2,tsrc3]).T # array of N rows by 4 columns
-        return (utTime,tslow,d,az,el,tsrc)
-    
+ 
     def plotHk(self, fileList, inter=False,verb=True):
         """
         takes a fileList of *.tar.gz files
@@ -448,7 +328,7 @@ class wvrAnalysis():
             ioff()
             
         timefmt = DateFormatter('%H:%M:%S')
-        utTime, tslow, d, az, el, tsrc = self.readSlowFile(fileList)
+        utTime, tslow, d, az, el, tsrc = self.read.readSlowFile(fileList)
         if size(tslow) == 1: return
         
         nfiles = size(fileList)
@@ -650,130 +530,128 @@ class wvrAnalysis():
             close('all')
         self.movePlotsToReducDir()
 
-    def readStatFile(self, fileList, verb=True):
-        
-        fileList = au.aggregate(fileList)
-        fl=[]
-        for f in fileList:
-            fl.append(f.replace('.tar.gz','_stat.txt'))
 
-        d=[]
-        for filename in fl:
-            if not(os.path.isfile(self.dataDir+filename)):
-                continue
-            if verb: print "Reading %s"%filename
-            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            d.append(e)
-        d = hstack(d)
+    def plotStat(self, fileList, fignum=1, inter=False, verb=True):
+        """
+        Takes a filelist of  of *.tar.gz files
+        generates plots to show the status of each alarm in the stat file
+        Will generate a 24hour plot only (per hour  plot does not make sense),
+        with the following subplots
+        - State Alarms
+        - 12VOLT, 6VOLT, M6VOLT, 12CURR, 6CURR, M6CURR values.
+        Created by NL 20160916
+        Last updated NL 20161019
+        Updated by dB 20161103 with major modifications/simplifications
+        """
 
-        keys = d.dtype.fields.keys()
-        utTime = []
-        for tstr in d['TIME']:
-            # try/except to deal with early season change of format
-            try:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-            except:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
-        tslow = d['TIMEWVR']
-        return (utTime,tslow,d)
+        if inter:
+            ion()
+        else:
+            ioff()
+
+        nfiles = size(fileList)
+        if verb: print "Loading %d stat files"%nfiles
+        (utTime, d) = self.read.readStatFile(fileList)
+        if size(utTime) == 1: return
+
+        fname = fileList[0].split('_')
+        filestat = '%s_2400.txt'%fname[0]
+
+        figsize = (36,12)
+        trange = [utTime[0].replace(hour=0, minute=0, second=0),
+                  utTime[-1].replace(hour=23, minute=59, second=59)]
+
+        fig=figure(fignum, figsize = figsize); clf()
+       
+        #############################################################################
+        listofalarms = ['STATE_MODE', 'STATE_OP', 'STATE_ALARM', 'STATE_BOOT', 'STATE_CLK', 'STATE_TE',
+                  'AL_BYTS', 'AL_CTRL', 'AL_V12', 'AL_CURR', 'AL_VOLT', 'AL_TEMP', 'AL_TEST']
+
+        '''
+        Explanation of alarms, see section 5.2-5.3 of Alma WVR operations manual ACZMAN001
+        STATE_MODE: 0 = operational, 1 = idle, 2 = config mode, 3 = n/a
+        STATE_OP: 1 = ready for operations ie hot/cold loads are appropriately set and stable, 0 else
+        STATE_ALARM: 0 = all is well, 1 = at least one alarm is set
+        STATE_BOOT: 0 = all is well, 1 = watchdog timer has expired and rebooted the CPU
+        STATE_CLK: 1 = all is well and the 125 MHz external clock is present, 0 else
+        STATE_TE: 1 = all is well and external timing event (TE) ticks present, 0 else
+        AL_12V: 0 = all is well, 1 = +12V is switched off which can happen due to tripped temp protection
+        AL_CTRL: 0 = all is well, 1 = a control point was requested while not in the proper mode
+        AL_BYTES: 0 = all is well, 1 = a control point was requested with wrong number of bytes
+        AL_CURR: 0 = all is well; bits 3210 where 0:+12V supply overcurrent, 1:+6V overcurrent, 
+        2:-6V overcurrent, 3:chopper overcurrent
+        AL_VOLT: 0 = all is well; bits 210 where 0:+12V supply overvoltage, 1:+6V overvoltage, 
+        2:-6V overvoltage
+        AL_TEMP: 0 = all is well, bits 43210 where 0:Hot load over temp, 1: cold load over temp, 
+        2:ctrl over temp, 3:BE over temp, 4:CS over temp tripped
+        AL_TEST: 0 = all is well, bits 210 where 0:chopper wheel error during last self test, 
+        1:calibration file error during last self-test, 2:LO error
+        '''
+        sp1 = subplot2grid((11,1), (0, 0), rowspan=5)
+        dd = asarray([d['STATE_MODE'],d['STATE_OP'], d['STATE_ALARM'],d['STATE_BOOT'], d['STATE_CLK'], d['STATE_TE'],
+                      d['AL_BYTS'], d['AL_CTRL'], d['AL_V12'], d['AL_CURR'], d['AL_VOLT'], d['AL_TEMP'], d['AL_TEST']])
+        s = shape(dd)
+        cmap = cm.get_cmap('jet', 16)
+        im1 = imshow(dd,aspect='auto',cmap=cmap,interpolation='nearest',extent=(0,s[1],0,s[0]),vmin=0,vmax=16)
+       
+        sp1.set_yticks(arange(13))
+        grid(color='w',which='both')
+        sp1.set_xlim([0,s[1]])
+        sp1.set_xticks([5.125,10.25,15.375,20.6,25.625,30.75,35.875])
+        sp1.set_xlabel('')
+        sp1.set_ylim([-.2,13.2])
+        listofalarms.reverse()
+        sp1.set_yticklabels(listofalarms)
+        sp1.set_yticklabels(listofalarms, verticalalignment='baseline')
+        cbaxes = fig.add_axes([0.91, 0.55, 0.02, .35]) 
+        cbar = colorbar(im1, cax = cbaxes)
+        cbar.ax.get_yaxis().labelpad = 12
+        cbar.set_label(' State/Alarm values', rotation=270)
+
+        #Now for other subplots
+        self.plot_stat_subplot(11, 5, utTime, d,'12VOLT', trange, [11.4,12.4],0.2)
+        self.plot_stat_subplot(11, 6, utTime, d, '6VOLT', trange, [5.4,6.4],0.2)
+        self.plot_stat_subplot(11,7, utTime, d, 'M6VOLT', trange, [-6.4,-5.4],0.2)
+        self.plot_stat_subplot(11,8, utTime, d, '12CURR', trange, [3.0,4.0],0.2)
+        self.plot_stat_subplot(11,9, utTime, d, '6CURR', trange, [2.4,3.0],0.2)
+        self.plot_stat_subplot(11,10, utTime, d, 'M6CURR', trange, [.09,.12],0.01)
+
+        subplots_adjust(hspace=0.01)
+        title = filestat.replace('.txt','_STAT')
+        suptitle(title,y=0.95, fontsize=24)
+        print "Saving %s.png"%title
+        savefig(title+'.png')
         
+        if not inter:
+            close('all')
+        self.movePlotsToReducDir()
+          
+    def plot_stat_subplot(self,nsubplots,subplot,t,d,var,trange,ylim, ydelta):
+        
+        majorloc = HourLocator(byhour=(3,6,9,12,15,18,21))
+        sp = subplot2grid((nsubplots,1), (subplot, 0), rowspan=1);
+        plt.plot(t, d[var], 'b.', ms=5, lw=2)
+        grid()
+        sp.set_xlim(trange)
+        sp.xaxis.set_major_formatter(DateFormatter('%H:00'))
+        sp.xaxis.set_major_locator(majorloc)
+        if subplot == nsubplots-1:
+            sp.set_xlabel('Time')
+        else:
+            sp.set_xticklabels('')
+        sp.set_ylabel(var)
+        sp.set_ylim(ylim)
+        sp.set_yticks(arange(ylim[0],ylim[1],ydelta))
+        mi = min(d[var])
+        ma = max(d[var])
+        cap = 'Min: %2.2f, Max: %2.2f'%(mi,ma)
+        text(0.88,0.79,cap,transform=sp.transAxes,fontsize=12)
+
     def movePlotsToReducDir(self):
         # move the plots to reduc_plots dir
         os.system('mv -f *.png %s'%self.reducDir)
         return
                       
-    def readWxFile(self,fileList, type='NOAA',verb=True):
-        """
-        Given a list of files, this will read all of them, 
-        and produce a concatenated output 
-        ready to be plotted.
-        """
-        fileList = au.aggregate(fileList)
-        if size(fileList) == 0:
-            print "No Wx data during that time range"
-            return (None, None)
-
-        fl=[]
-        for f in fileList:
-            ymd = f.split('_')[0]
-            hms = f.split('_')[1]
-            fl.append('%s_%s0000'%(ymd,hms[0:2])+'_Wx_Summit_NOAA.txt')
-        fl = unique(fl)
-        
-        wx=[]
-        for filename in fl:
-            filename = self.dataDir+filename
-            if (verb): print "Reading %s"%filename
-            if (type=='NOAA'):
-                if os.path.isfile(filename):
-                    e = genfromtxt(filename,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
-                else:
-                    print "WARNING: %s file missing. skipping... "%filename
-                    continue
-            else:
-                e = genfromtxt(self.wxDir+filename, delimiter='',names=True, invalid_raise = False)
-            wx.append(e)
-            
-        if size(wx) == 0: return (None,None)
-        wx = concatenate(wx,axis=0)
-            
-        # convert MJD into UT date
-        utTime = []
-        if (type=='NOAA'):
-            for ut in wx['ut']:
-                utTime.append(datetime.datetime.strptime(ut,'"%Y-%m-%d %H:%M:%S"'))
-        else:
-            for mjd in wx['mjd']:
-                ut=au.mjdToUT(mjd)
-                utTime.append(datetime.datetime.strptime(ut,'%Y-%m-%d %H:%M:%S UT'))
-
-        #### add Rh to wx array if not present
-        if 'dewC' in wx.dtype.fields:
-            wx_tmp = empty(wx.shape,dtype=wx.dtype.descr+[('rh',float)])
-            for name in wx.dtype.names:
-                wx_tmp[name]=wx[name]
-            wx_tmp['rh']=self.calcRh(wx['tempC'],wx['dewC'])
-            wx = wx_tmp
-
-        return (utTime, wx)
-
-    def readSPWxData(self, date='', time='',shrink = 0, verbose=True,):
-        """
-        Instead of reading B2/ Keck Wx data, reads minutely spo met data. 
-        Downloaded from:
-        # ftp://aftp.cmdl.noaa.gov/data/meteorology/in-situ/spo/2015/met_spo_insitu_1_obop_minute_2015_12.txt;
-        for a given date/time string time should be in 1 hour increment
-        shrink [hrs] is number of hours before and after we want to select. if zero provides the whole month file
-
-        """
-        dat=datetime.datetime.strptime('%s %s'%(date,time),'%Y%m%d %H%M%S')
-        print dat
-        year = date[0:4]
-        month = date[4:6]
-        wxFile = 'met_spo_insitu_1_obop_minute_%s_%s.txt'%(year,month)
-
-        if verbose: print "Reading %s"%wxFile
-        d = genfromtxt(self.dataDir+wxFile,delimiter='',dtype='S,i,i,i,i,i,i,f,i,f,f,f,f,f,f')
-        dt = array([datetime.datetime(t[1],t[2],t[3],t[4],t[5]) for t in d])
-        wx ={'time': dt, 'presmB':d['f9'],'tempC': d['f11'],'rh':d['f13'],'wsms':d['f7'],'wddeg':d['f6']}
-
-        # exclude junk data
-        q = find((wx['presmB'] != -999.9) & (wx['tempC'] != -999.9) & (wx['rh'] != -99.))
-        if q != []:
-            for k in wx.keys():
-                wx[k]=wx[k][q]
-        # down-select to given time range
-        if shrink != 0:
-            f = shrink*60
-            nrows = size(wx['time'])
-            q = find(wx['time'] == dat)
-            while(size(q) == 0):
-                dat=dat+datetime.timedelta(seconds=60)
-                q = find(wx['time'] == dat)
-            for k in wx.keys():
-                wx[k]=wx[k][max(q-60,0):min(q+60,nrows)]
-        
-        return wx
     
     def plotWx(self,fileList, inter=False):
         """
@@ -875,15 +753,4 @@ class wvrAnalysis():
 
         return (utwx, wx)
 
-    def calcRh(self,T,Td):
-        """
-        calc Rh based on T and Tdewpoint
-        based on andrew.rsms.miami.edu/bmcnoldy/Humidity.html
 
-        """
-        T = array(T)
-        Td = array(Td)
-        rh = 100* (exp((17.625*Td)/(243.04+Td)) / exp((17.625*T)/(243.04+T)) )
-        return rh
-
-        

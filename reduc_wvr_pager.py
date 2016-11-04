@@ -4,13 +4,20 @@ Scripts to generate reduc plots of the WVR data.
 '''
 
 import glob
-import sys
-import matplotlib as mpl
-mpl.use('Agg')
-import wvrAnalysis
+import os,sys
+envDisplay = os.getenv('DISPLAY')
+if  (envDisplay == None):
+    print "Using Agg matplotlib backend"
+    import matplotlib as mpl
+    mpl.use('Agg')
+else:
+    print "Using standard TkAgg matlplotlib backend"
+    #import matplotlib as mpl
+    #mpl.use('Agg')
+import wvrPlot
+import wvrReadData
 from pylab import *
 from datetime import datetime
-import os
 import socket
 from subprocess import Popen, PIPE
 
@@ -35,7 +42,8 @@ class reduc_wvr_pager():
         self.dataDir = self.home+'/%s_data/'%self.unit
         self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
         
-        self.wvrA = wvrAnalysis.wvrAnalysis(self.unit)
+        self.wvrP = wvrPlot.wvrPlot(self.unit)
+        self.wvrR = wvrReadData.wvrReadData(self.unit)
 
     def getcutFileList(self):
         print "loading cutFile list..."
@@ -66,6 +74,33 @@ class reduc_wvr_pager():
                               (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileListWx)
         
         return  fileListWx
+
+    def makeFileListFromTilt(self, start=None, end=None):
+        cwd = os.getcwd()
+        os.chdir(self.dataDir)
+        fileListTiltTmp = glob.glob('*_Tilt.tar.gz')
+        
+        # untar files as necessary
+        for f in fileListTiltTmp:
+            if (self.host != 'wvr1') and (self.host != 'wvr2'):
+                if not os.path.exists(f.replace('_MMCR_Tilt.tar.gz','_000000_MMCR_Tilt.txt')):
+                    print "Untarring: %s"%f
+                    os.system('tar -xzvf %s'%f) # untar files
+                    
+        fileListTilt = glob.glob('*_Tilt.txt')
+
+        # filter fileList by dates
+        if start != None:
+            dstart=datetime.strptime(start,'%Y%m%d')
+            if end !=None: 
+                dend = datetime.strptime(end,'%Y%m%d')
+            else:
+                dend = datetime.now()            
+            fileListTilt=filter(lambda f: 
+                              (datetime.strptime(f.split('_')[0],'%Y%m%d') >= dstart) and 
+                              (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileListTilt)
+        
+        return  sort(unique(fileListTilt))
     
     def makeFileListFromData(self,typ='*',start=None, end=None):
         
@@ -79,7 +114,7 @@ class reduc_wvr_pager():
            
         fileList = glob.glob('*%s.tar.gz'%typ)
         # remove '2016wvrLog.tar.gz', remove daily MMCR files
-        fileList = filter(lambda f: ('2016wvrLog.tar.gz' not in f),fileList)   
+        fileList = filter(lambda f: ('2016wvrLog.tar.gz' not in f),fileList)
         fileList = filter(lambda f: ('MMCR' not in f),fileList)
         dateList = []
         dayList = []
@@ -138,10 +173,10 @@ class reduc_wvr_pager():
                         continue            
 
                 print "Making 1hr Wx plots for %s"%f
-                self.wvrA.plotWx([f], inter=False)
+                self.wvrP.plotWx([f], inter=False)
                     
                 print "Making 1hr Hk plots for %s"%f
-                self.wvrA.plotHk([f], inter=False)
+                self.wvrP.plotHk([f], inter=False)
 
                 print ''
                 if f[0:15] in self.cutFileListPIDTemp:
@@ -149,10 +184,10 @@ class reduc_wvr_pager():
                     continue
                 else:
                     print "Making 1hr PIDTemps plot for %s"%f
-                    self.wvrA.plotPIDTemps([f], fignum=4,inter=False)
+                    self.wvrP.plotPIDTemps([f], fignum=4,inter=False)
 
                 #print "Making 1hr Fast plot for %s"%f
-                #self.wvrA.plotFastData([f],inter=False )
+                #self.wvrP.plotFastData([f],inter=False )
 
                 close("all")
                 
@@ -172,27 +207,30 @@ class reduc_wvr_pager():
                 #        print '%s already exists, skipping...'%plotfile
                 #        continue
 
+                print "Making 24hr Stat plot for %s"%day
+                self.wvrP.plotStat(fileListOneDay, fignum=5,inter=False)
+
                 wxFileList = self.makeFileListFromWx(start=day,end=day)
                 if size(wxFileList) != 0:
                     print "Making 24hr Wx plot for %s"%day
-                    self.wvrA.plotWx(wxFileList,inter=False)
+                    self.wvrP.plotWx(wxFileList,inter=False)
                 
                 print "Making 24hr Hk plot for %s"%day
-                self.wvrA.plotHk(fileListOneDay,inter=False)
+                self.wvrP.plotHk(fileListOneDay,inter=False)
 
                 #print "Making 24hr Fast plot for %s"%day
-                #self.wvrA.plotFastData(fileListOneDay,inter=False)
+                #self.wvrP.plotFastData(fileListOneDay,inter=False)
             
                 print "Making 24hr PIDTemps plot for %s"%day
                 for cutf in self.cutFileListPIDTemp:
                     fileListOneDay=filter(lambda f: cutf not in f, fileListOneDay)
                 if size(fileListOneDay) == 0: continue
-                self.wvrA.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
+                self.wvrP.plotPIDTemps(fileListOneDay, fignum=4,inter=False)
 
                 self.makeSymlinks(day)
                 
     def makeSymlinks(self, day):
-        plottypes = ['PIDTemps','AZ_EL','WVR_Calibrated_TSRC','WVR_TEMPS','LOAD_TEMPS','Wx']
+        plottypes = ['STAT','PIDTemps','AZ_EL','WVR_Calibrated_TSRC','WVR_TEMPS','LOAD_TEMPS','Wx']
         hours = ['00','04','08','12','16','20','24']
         cwd = os.getcwd()
         os.chdir(self.reducDir)
@@ -368,7 +406,7 @@ class reduc_wvr_pager():
     def getDailyPIDTempsStats(self, start = None, verb = True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, sample, wx, temps, input, output = self.wvrA.readPIDTempsFile(fl,verb=verb)
+        utTime, sample, wx, temps, input, output = self.wvrR.readPIDTempsFile(fl,verb=verb)
 
         print ''
         print '#############################################'
@@ -380,11 +418,10 @@ class reduc_wvr_pager():
         print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['wsms']),median(wx['wsms']),max(wx['wsms']),std(wx['wsms']))
 
 
-
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, tslow, d = self.wvrA.readStatFile(fl,verb=verb)
+        utTime, tslow, d = self.wvrR.readStatFile(fl,verb=verb)
 
         keys = d.dtype.fields.keys()
         print ''
@@ -502,12 +539,13 @@ class reduc_wvr_pager():
         h.write('</html>\n');
         h.close();
             
-        
 
     def make_plot_panel(self, dateList):
         
         outdir = self.reducDir
         fname='%s/wvr_plots.html'%outdir
+        dt=dateList[-1];
+        dt0 = dateList[-2]
         h=open(fname,'w');
         
         h.write('<style type="text/css"> \n')
@@ -525,18 +563,23 @@ class reduc_wvr_pager():
         h.write('       el[ii].addEventListener("click", togglefit); \n')
         h.write (' } \n ')
         h.write('        }); \n')
-        h.write(' </script> \n')
-
-        
+        h.write(' </script> \n')   
 
         h.write('<SCRIPT LANGUAGE="JavaScript">\n');
         h.write('<!--\n\n');
+
+        h.write('function set_date(date){\n');
+        h.write('  parent.set_date(date);\n');
+        h.write('}\n');
+
         h.write('function set_plottype(plottype){\n');
         h.write('  parent.set_plottype(plottype)\n');
         h.write('}\n');
+
         h.write('function set_hour(hour){\n');
         h.write('  parent.set_hour(hour);\n');
         h.write('}\n')
+
         h.write('function set_obstype(obstype){\n');
         h.write('  parent.set_obstype(obstype);\n');
         h.write('}\n')
@@ -549,6 +592,7 @@ class reduc_wvr_pager():
         
         h.write('Plot Types: \n')
         h.write('<a href="javascript:set_plottype(\'PIDTemps\');">PIDTemps</a> |\n');
+        h.write('<a href="javascript:set_plottype(\'STAT\');">STAT</a> |\n');
         h.write('<a href="javascript:set_plottype(\'WVR_TEMPS\');">WVR Temps</a> |\n');
         h.write('<a href="javascript:set_plottype(\'WVR_Calibrated_TSRC\');">WVR Calibrated Tsrc</a> |\n');
         h.write('<a href="javascript:set_plottype(\'LOAD_TEMPS\');">WVR Load Temps</a> |\n');
@@ -592,7 +636,7 @@ class reduc_wvr_pager():
         h.write('</font \n');
         h.write('<p>\n\n');
         
-        dt=dateList[-1];
+
         h.write('<img class="viewfit" src="%s_2400_PIDTemps.png" width=100%% name="fig">\n\n'%(dt));
         
         h.write('<SCRIPT LANGUAGE="JavaScript">\n');

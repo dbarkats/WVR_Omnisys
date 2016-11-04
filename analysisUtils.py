@@ -29,62 +29,13 @@ Denis Barkats, 20160325
 if 1 :
     import os
     import shutil
-    import distutils.spawn # used in class linfit to determine if dvipng is present
     import sys
-    #import re
-    #from types import NoneType
-    #import math
-    #import binascii # used for debugging planet()
-    #from mpfit import mpfit
     from pylab import *
-    #from numpy.fft import fft
-    #import fnmatch, pickle, traceback, copy as python_copy # needed for editIntents
-    #import scipy as sp
     import time as timeUtilities
     if (np.__version__ < '1.9'):
         import scipy.signal as spsig
         from scipy.interpolate import splev, splrep
-if 0:
-    import scipy.special # for Bessel functions
-    import scipy.odr # for class linfit
-    import string
-    import struct # needed for pngWidthHeight
-    import glob
-    import readscans as rs
-    import datetime
-    import tmUtils as tmu
-    import compUtils  # used in class SQLD
-    #import pytz  # used in computeUTForElevation
-    from scipy.special import erf, erfc  # used in class Atmcal
-    from scipy import ndimage
-    from scipy import polyfit
-    from scipy import optimize # used by class linfit
-    import random  # used by class linfit
-    import matplotlib.ticker # used by plotWeather
-    from matplotlib import rc # used by class linfit
-    from matplotlib.figure import SubplotParams
-    from matplotlib.ticker import MultipleLocator # used by plotPointingResults
-    import commands  # useful for capturing stdout from a system call
-    import warnings
-    import csv # used by getALMAFluxcsv
-    import StringIO # needed for getALMAFluxcsv
-    import fileIOPython as fiop
-    from scipy.stats import scoreatpercentile, percentileofscore
-    import types
-    import operator
-    import XmlObjectifier
-    from xml.dom import minidom
-    import subprocess
-    import urllib2
-    import itertools
-    import calDatabaseQuery  # used by searchFlux
-    import socket            # used by searchFlux to set tunnel default
-    import rootFinder  # functions for solving quadratic and cubic polynomial roots
-    try:
-        import pyfits # needed for getFitsBeam
-        pyfitsPresent = True
-    except:
-        pyfitsPresent = False
+
 """
 Constants that are sometimes useful.  Warning these are cgs, we might want to change them
 to SI given the propensity in CASA to use SI.
@@ -244,3 +195,39 @@ def ComputeJulianDayFromUnixTime(seconds):
     day = tm_mday + UT/24.
     jd  = floor(365.25*((tm_year)+4716)) + floor(30.6001*((tm_mon)+1))  + day + b - 1524.5
     return(jd) 
+
+
+def interpDatetime(utTime, utwx, wx):
+    """
+    given a datetime array utTime, 
+    this will interpolate utwx and wx to utTime
+    """
+    wxnew = empty(shape(utTime),dtype=wx.dtype.descr)
+    keys = wx.dtype.fields.keys()
+    t1 = []
+    t2 = []
+    tref = datetime.datetime(1970,1,1)
+    for t in utTime:
+        t1.append((t-tref).total_seconds())
+    for t in utwx:
+        t2.append((t- tref).total_seconds())
+    for k in keys:
+        if k == 'ut':
+            wxnew[k]=utTime
+        else:
+            wxnew[k]= interp(t1,t2,wx[k])
+                
+    return wxnew
+
+
+def calcRh(T,Td):
+    """
+    calc Rh based on T and Tdewpoint
+    based on andrew.rsms.miami.edu/bmcnoldy/Humidity.html
+    
+    """
+    T = array(T)
+    Td = array(Td)
+    rh = 100* (exp((17.625*Td)/(243.04+Td)) / exp((17.625*T)/(243.04+T)) )
+    
+    return rh

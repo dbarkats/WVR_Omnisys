@@ -75,8 +75,6 @@ class wvrAncillaryData():
 
         return r
 
-
-
     def archiveTiltFiles(self,strdate):
         """
         Archive 1 day's worth of tilt files and put in archdir
