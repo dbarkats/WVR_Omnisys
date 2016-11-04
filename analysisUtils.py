@@ -35,7 +35,8 @@ if 1 :
     if (np.__version__ < '1.9'):
         import scipy.signal as spsig
         from scipy.interpolate import splev, splrep
-
+    from bisect import *
+        
 """
 Constants that are sometimes useful.  Warning these are cgs, we might want to change them
 to SI given the propensity in CASA to use SI.
@@ -197,6 +198,7 @@ def ComputeJulianDayFromUnixTime(seconds):
     return(jd) 
 
 
+<<<<<<< HEAD
 def interpDatetime(utTime, utwx, wx):
     """
     given a datetime array utTime, 
@@ -231,3 +233,93 @@ def calcRh(T,Td):
     rh = 100* (exp((17.625*Td)/(243.04+Td)) / exp((17.625*T)/(243.04+T)) )
     
     return rh
+
+
+### Some useful fns for binary search of sorted arrays -
+### these are supposedly faster than searching using eg list comprehensions
+### Copied from https://docs.python.org/3/library/bisect.html
+### and added to analysisUtils by NL 2016-11-02
+
+def index(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list.  Locate the leftmost value exactly equal to x
+    '''
+    i = bisect_left(a, x)
+    if i != len(a) and a[i] == x:
+        return i
+    raise ValueError
+
+def find_lt(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find rightmost value less than x
+    '''
+    i = bisect_left(a, x)
+    if i:
+        return a[i-1]
+    raise ValueError
+
+def find_le(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find rightmost value less than or equal to x
+    '''
+    i = bisect_right(a, x)
+    if i:
+        return a[i-1]
+    raise ValueError
+
+
+def index_lt(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find index of rightmost value less than x
+    '''
+    i = bisect_left(a, x)
+    if i:
+        return i-1
+    raise ValueError
+
+def index_le(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find index of rightmost value less than or equal to x
+    '''
+    i = bisect_right(a, x)
+    if i:
+        return i-1
+    raise ValueError
+    
+
+def find_gt(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find leftmost value greater than x
+    '''
+    i = bisect_right(a, x)
+    if i != len(a):
+        return a[i]
+    raise ValueError
+
+def find_ge(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find leftmost item greater than or equal to x
+    '''
+    i = bisect_left(a, x)
+    if i != len(a):
+        return a[i]
+    raise ValueError
+
+def index_gt(a, x):
+    '''
+    a is a (monotonically increasing) sorted array or list. Find index of leftmost value greater than x
+    '''
+    i = bisect_right(a, x)
+    if i != len(a):
+        return i
+    raise ValueError
+
+def index_ge(a, x):
+    '''
+    Find index of leftmost item greater than or equal to x
+    '''
+    i = bisect_left(a, x)
+    if i != len(a):
+        return i
+    raise ValueError
+

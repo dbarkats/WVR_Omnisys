@@ -1,0 +1,7 @@
+# List of WVR2 individual PIDTemps files that should be cut due to some problem.
+# Updated manually
+# Part of Git Archive
+# Last update NL 2016-10-26
+# Format: file name,  comment
+
+20161023_220133,
