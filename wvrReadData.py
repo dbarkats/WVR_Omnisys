@@ -1,25 +1,19 @@
+
 import os
 from pylab import *
-#import time
-import analysisUtils as au
 
-class wvrReadData():
+import analysisUtils as au
+from initialize import initialize
+
+
+class wvrReadData(initialize):
     
     def __init__(self, unit=None):
         """
-        """       
-        if (unit != 'wvr1') and (unit != 'wvr2'):
-            print "unit must be wvr1 or wvr2, exiting"
-            exit()
+        """      
 
-        self.home = os.getenv('HOME')
-        self.setDirs(unit)
+        initialize.__init__(self, unit)
 
-    def setDirs(self, unit):
-
-        self.reducDir = self.home+'/%s_reducplots/'%unit
-        self.dataDir = self.home+'/%s_data/'%unit
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
 
     def readPIDTempsFile(self, fileList, verb=True):
 
@@ -31,15 +25,18 @@ class wvrReadData():
             
         d=[]
         for filename in fl:
-            if os.path.isfile(self.dataDir+filename):
+            if not(os.path.isfile(self.dataDir+filename)):
+                print "WARNING: Skipping %s: File missing"%filename
+                continue
+            elif os.path.getsize(self.dataDir+filename) == 0:
+                print "WARNING: Skipping %s: File size 0"%filename
+                continue
+            else:
                 if verb: print "Reading %s"%filename
                 data = genfromtxt(self.dataDir+filename,delimiter='',
                                   dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f',
                                   invalid_raise = False)
-            else:
-                if verb: print "WARNING: %s file missing. skipping... "%filename
-                continue
-            d.append(data)
+                d.append(data)
 
         if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)
@@ -81,9 +78,16 @@ class wvrReadData():
 
         d=[]
         for k,filename in enumerate(fl):
-            if verb: print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
-            e = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            d.append(e)
+            if not(os.path.isfile(self.dataDir+filename)):
+                print "WARNING: Skipping %s: File missing"%filename
+                continue
+            elif os.path.getsize(self.dataDir+filename) == 0:
+                print "WARNING: Skipping %s: File size 0"%filename
+                continue
+            else:
+                if verb: print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
+                e = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+                d.append(e)
         d = concatenate(d,axis=0)
 
         tfast =  d['TIMEWVR']
@@ -106,21 +110,15 @@ class wvrReadData():
         d=[]
         for filename in fl:
             if not(os.path.isfile(self.dataDir+filename)):
+                print "WARNING: Skipping %s: File missing"%filename
                 continue
-            if verb: print "Reading %s"%filename
-
-            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype=None,invalid_raise = False)
-            #if 'AZ' in testRead:
-            #    if "VOLT" in testRead:
-            #        if 'BE_BIAS0' in testRead:
-            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            #        else:
-            #            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)  
-            #    else:
-                    #e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            # else:
-            #    e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
-            d.append(e)
+            elif os.path.getsize(self.dataDir+filename) == 0:
+                print "WARNING: Skipping %s: File size 0"%filename
+                continue
+            else:
+                if verb: print "Reading %s"%filename
+                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, skip_footer=1, names=True,dtype=None,invalid_raise = False)
+                d.append(e)
         if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)
 
@@ -155,12 +153,17 @@ class wvrReadData():
         utTime = []
         for filename in fl:
             if not(os.path.isfile(self.dataDir+filename)):
+                print "WARNING: Skipping %s: File missing"%filename
                 continue
-            if verb: print "Reading %s"%filename
-            e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=2, dtype=None,invalid_raise = False)
-            tstr = '%sT%s'%(filename.split('_')[0],filename.split('_')[1])
-            utTime.append(datetime.datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
-            d.append((e[0][1],e[0][2],e[1][1],e[1][2]))
+            elif os.path.getsize(self.dataDir+filename) == 0:
+                print "WARNING: Skipping %s: File size 0"%filename
+                continue
+            else:
+                if verb: print "Reading %s"%filename
+                e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=2, dtype=None,invalid_raise = False)
+                tstr = '%sT%s'%(filename.split('_')[0],filename.split('_')[1])
+                utTime.append(datetime.datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
+                d.append((e[0][1],e[0][2],e[1][1],e[1][2]))
        
         return (array(utTime),array(d))
     

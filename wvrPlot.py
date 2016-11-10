@@ -9,33 +9,16 @@ from matplotlib.dates import DateFormatter
 
 import analysisUtils as au
 import wvrReadData as wrd
+from initialize import initialize
 
-class wvrPlot():
+class wvrPlot(initialize):
     
     def __init__(self, unit=None):
         """
         """       
-        hostname = socket.gethostname()
-        self.home = os.getenv('HOME')
-        if unit == None:
-            if hostname.startswith('wvr2'):
-                self.unit = 'wvr2'
-            elif hostname == 'wvr1':
-                self.unit = 'wvr1'
-        else:
-            if unit == 'wvr1':
-                self.unit = 'wvr1'
-            else:
-                self.unit = 'wvr2'
+        initialize.__init__(self, unit)
 
-        self.setDirs()
-        self.read = wrd.wvrReadData(self.unit)
-
-    def setDirs(self):
-
-        self.reducDir = self.home+'/%s_reducplots/'%self.unit
-        self.dataDir = self.home+'/%s_data/'%self.unit
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
+        self.wvrR = wrd.wvrReadData(self.unit)
     
     def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
 
@@ -62,7 +45,7 @@ class wvrPlot():
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         if verb: print "Loading %d PIDTemps files"%nfiles
-        ut, sample, wx, temps, input, output = self.read.readPIDTempsFile(fileList)
+        ut, sample, wx, temps, input, output = self.wvrR.readPIDTempsFile(fileList)
         if size(sample) <= 30: return
         
         fname = fileList[0].split('_')
@@ -124,7 +107,7 @@ class wvrPlot():
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
         grid(color='gray')
-        ylim([0,31])
+        ylim([0,35])
         subpl.set_xticklabels('')
         subpl.set_xlim(trange)
         legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
@@ -177,8 +160,7 @@ class wvrPlot():
 
         if not inter:
             close('all')
-        self.movePlotsToReducDir()
-
+        au.movePlotsToReducDir(self.reducDir)
     
     def getIndex(self,d):
         freqs = ['CH0','CH1','CH2','CH3']
@@ -201,7 +183,7 @@ class wvrPlot():
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         if verb: print "Loading %d fast files"%nfiles
-        utfast,tfast,azfast,elfast,d = self.read.readFastFile(fileList)
+        utfast,tfast,azfast,elfast,d = self.wvrR.readFastFile(fileList)
         if size(tfast) == 1: return
 
         chans, q = self.getIndex(d)
@@ -308,7 +290,7 @@ class wvrPlot():
 
             if not inter:
                 close('all')
-            self.movePlotsToReducDir()
+            au.movePlotsToReducDir(self.reducDir)
      
  
     def plotHk(self, fileList, inter=False,verb=True):
@@ -328,7 +310,7 @@ class wvrPlot():
             ioff()
             
         timefmt = DateFormatter('%H:%M:%S')
-        utTime, tslow, d, az, el, tsrc = self.read.readSlowFile(fileList)
+        utTime, tslow, d, az, el, tsrc = self.wvrR.readSlowFile(fileList)
         if size(tslow) == 1: return
         
         nfiles = size(fileList)
@@ -528,7 +510,7 @@ class wvrPlot():
 
         if not inter:
             close('all')
-        self.movePlotsToReducDir()
+        au.movePlotsToReducDir(self.reducDir)
 
 
     def plotStat(self, fileList, fignum=1, inter=False, verb=True):
@@ -551,7 +533,7 @@ class wvrPlot():
 
         nfiles = size(fileList)
         if verb: print "Loading %d stat files"%nfiles
-        (utTime, d) = self.read.readStatFile(fileList)
+        (utTime, d) = self.wvrR.readStatFile(fileList)
         if size(utTime) == 1: return
 
         fname = fileList[0].split('_')
@@ -624,7 +606,7 @@ class wvrPlot():
         
         if not inter:
             close('all')
-        self.movePlotsToReducDir()
+        au.movePlotsToReducDir(self.reducDir)
           
     def plot_stat_subplot(self,nsubplots,subplot,t,d,var,trange,ylim, ydelta):
         
@@ -646,11 +628,6 @@ class wvrPlot():
         ma = max(d[var])
         cap = 'Min: %2.2f, Max: %2.2f'%(mi,ma)
         text(0.88,0.79,cap,transform=sp.transAxes,fontsize=12)
-
-    def movePlotsToReducDir(self):
-        # move the plots to reduc_plots dir
-        os.system('mv -f *.png %s'%self.reducDir)
-        return
                       
     
     def plotWx(self,fileList, inter=False):
@@ -666,7 +643,7 @@ class wvrPlot():
         timefmt = DateFormatter('%H:%M:%S')
         nfiles = size(fileList)
         print "Loading %d Wx files"%nfiles
-        utwx, wx= self.readWxFile(fileList)
+        utwx, wx= self.wvrR.readWxFile(fileList)
         if utwx == None: return
         fields = wx.dtype.fields
 
@@ -734,8 +711,8 @@ class wvrPlot():
         sp = subplot(4,1,4)
         plot_date(utwx, wx['wddeg'],fmt='.-')
         sp.set_xlim(trange)
-        m = mod(math.asin(mean(sin(wx['wddeg']*pi/180)))*180/pi,360)
-        s = math.asin(std(sin(wx['wddeg']*pi/180)))*180/pi
+        m = mod(math.asin(nanmean(sin(wx['wddeg']*pi/180)))*180/pi,360)
+        s = math.asin(nanstd(sin(wx['wddeg']*pi/180)))*180/pi
         grid(color='gray')
         ylabel('Wx Wind Dir [Deg]')
         yl=ylim([-10,370])
@@ -749,7 +726,7 @@ class wvrPlot():
         print "Saving %s.png"%title
         savefig(title+'.png')
 
-        self.movePlotsToReducDir()
+        au.movePlotsToReducDir(self.reducDir)
 
         return (utwx, wx)
 

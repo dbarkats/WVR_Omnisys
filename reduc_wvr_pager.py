@@ -13,45 +13,40 @@ if  (envDisplay == None):
 else:
     print "Using standard TkAgg matlplotlib backend"
     #import matplotlib as mpl
-    #mpl.use('Agg')
-import wvrPlot
-import wvrReadData
+    #mpl.use('TkAgg')
 from pylab import *
 from datetime import datetime
-import socket
 from subprocess import Popen, PIPE
 
-class reduc_wvr_pager():
+import wvrPlot
+import wvrReadData
+from initialize import initialize
 
-    def __init__(self):
+class reduc_wvr_pager(initialize):
+
+    def __init__(self, unit=None):
         '''
         '''
-        self.host = socket.gethostname()
-        self.home = os.getenv('HOME')
-        if 'wvr2' in self.host:
-            self.setWvrUnit('wvr2')
 
-    def setWvrUnit(self,unit):
-        print "### Analyzing unit %s ..."%unit
-        self.unit = unit
-        self.setDirs()
+        initialize.__init__(self, unit)
 
-    def setDirs(self):
-
-        self.reducDir = self.home+'/%s_reducplots/'%self.unit
-        self.dataDir = self.home+'/%s_data/'%self.unit
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
-        
         self.wvrP = wvrPlot.wvrPlot(self.unit)
         self.wvrR = wvrReadData.wvrReadData(self.unit)
 
     def getcutFileList(self):
         print "loading cutFile list..."
-        d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListPIDTemps.txt',comments='#',delimiter=',',dtype='S15')
-        self.cutFileListPIDTemp = d.T[0]
-        d =  loadtxt(self.home+'/wvr_pipeline/wvr_cutFileListall.txt',comments='#',delimiter=',',dtype='S15')
-        self.cutFileListall = d.T[0]
-                       
+        d =  loadtxt(self.home+'/wvr_pipeline/%s_cutFileListPIDTemps.txt'%self.unit,comments='#',delimiter=',',dtype='S15')
+        if size(d) == 0:
+            self.cutFileListPIDTemp = []
+        else:
+            self.cutFileListPIDTemp = d.T[0]
+        d =  loadtxt(self.home+'/wvr_pipeline/%s_cutFileListAll.txt'%self.unit,comments='#',delimiter=',',dtype='S15')
+        if size(d) == 0:
+            self.cutFileListall = []
+        else:
+            self.cutFileListall = d.T[0]
+
+            
     def makeFileListFromWx(self, start=None, end=None, type='NOAA'):
         cwd = os.getcwd()
         if type == 'keck':
@@ -129,10 +124,12 @@ class reduc_wvr_pager():
             fileList=filter(lambda f: (datetime.strptime(f.split('_')[0],'%Y%m%d') >= dstart) and
                        (datetime.strptime(f.split('_')[0],'%Y%m%d') <= dend), fileList)
 
-        # cut fileList to remove files defined in self.cutFileList
-        for cutf in self.cutFileListall:
-            fileList=filter(lambda f: cutf not in f, fileList)
 
+        # cut fileList to remove files defined in self.cutFileList
+        if size(self.cutFileListall) >= 0:
+            for cutf in self.cutFileListall:
+                fileList=filter(lambda f: cutf not in f, fileList)
+       
         # untar files as necessary
         for f in fileList:
             if (self.host != 'wvr1') and (self.host != 'wvr2'):
@@ -201,11 +198,8 @@ class reduc_wvr_pager():
                     self.makeFileListFromData(typ='skyDip',start=day,end=day)))
                 fileListOneDay = sort(fileListOneDay)
 
-                # if update:
-                #    plotfile = '%s%s_24_LOAD_TEMPS.png'%(self.reducDir,day)
-                #    if os.path.isfile(plotfile):
-                #        print '%s already exists, skipping...'%plotfile
-                #        continue
+                print "Making 24hr atmogram"
+                fileListScanning=filter(lambda f: 'scanAz'  in f, fileListOneDay)
 
                 print "Making 24hr Stat plot for %s"%day
                 self.wvrP.plotStat(fileListOneDay, fignum=5,inter=False)
@@ -415,7 +409,7 @@ class reduc_wvr_pager():
         print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
         print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output),std(output))
         print "Az stage Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
-        print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['wsms']),median(wx['wsms']),max(wx['wsms']),std(wx['wsms']))
+        print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(nanmin(wx['wsms']),nanmean(wx['wsms']),nanmax(wx['wsms']),nanstd(wx['wsms']))
 
 
     def getDailyStatStats(self, start = None, complete=False, verb=True):

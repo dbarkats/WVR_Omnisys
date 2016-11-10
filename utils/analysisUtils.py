@@ -57,6 +57,11 @@ G  = 6.67259e-8
 Tcmb = 2.725
 
 
+def movePlotsToReducDir(reducDir):
+    # move the plots to reduc_plots dir
+    os.system('mv -f *.png %s'%reducDir)
+    return
+
 def aggregate(object):
     """
     This function checks whether the object is a list, and if it is not,
@@ -198,7 +203,6 @@ def ComputeJulianDayFromUnixTime(seconds):
     return(jd) 
 
 
-<<<<<<< HEAD
 def interpDatetime(utTime, utwx, wx):
     """
     given a datetime array utTime, 

@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     up = options.update
 
-    rwp = rw.reduc_wvr_pager()
+    rwp = rw.reduc_wvr_pager(unit)
 
     if options.start == None:
         n = datetime.datetime.now()

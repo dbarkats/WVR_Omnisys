@@ -1,0 +1,4 @@
+# List of WVR2 files that should be cut due to some problem.
+# Updated manually
+# Part of Git Archive
+# Format: file name,  comment
