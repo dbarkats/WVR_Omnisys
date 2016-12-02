@@ -239,6 +239,23 @@ def calcRh(T,Td):
     return rh
 
 
+def checkFileType(filename, path):
+    """
+    Given a filename full path, this will return the type of the file
+    """
+    from subprocess import Popen, PIPE
+    cwd = os.getcwd()
+    os.chdir(path)
+
+    p = Popen('file %s'%filename,stdout=PIPE,stderr=PIPE,shell=True)
+    output, errors = p.communicate()
+    os.chdir(cwd)    
+
+    ftype = output.split(':')[1].strip()
+
+    return ftype, output
+
+
 ### Some useful fns for binary search of sorted arrays -
 ### these are supposedly faster than searching using eg list comprehensions
 ### Copied from https://docs.python.org/3/library/bisect.html

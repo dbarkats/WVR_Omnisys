@@ -55,13 +55,13 @@ class wvrPlot(initialize):
             obsTyp = fname[2].split('.')[0]
         if nfiles > 1:
             figsize= (36,12)
-            leg_loc =(1.03, 1.03) 
+            leg_loc =(1.05, 1.03) 
             savefilename= '%s_2400.txt'%fname[0]
             trange=[ut[0].replace(hour=0,minute=0,second=0),
                     ut[-1].replace(hour=23,minute=59,second=59)]
         else:
             figsize=(12,8)
-            leg_loc =(1.13, 1.03)      
+            leg_loc =(1.08, 1.03)      
             savefilename = '%s_%s.txt'%(fname[0],fname[1][0:4])
             if obsTyp == 'skyDip':
                 trange=[ut[0].replace(minute=0,second=0),ut[-1].replace(second=59)]
@@ -73,7 +73,7 @@ class wvrPlot(initialize):
         figure(fignum, figsize=figsize)
         clf()
 
-        subpl=subplot(5,1,1)
+        subpl=subplot(7,1,1)
         plot_date(ut,au.smooth(input,20),fmt='g.-')
         m = mean(temps[:,0])
         s = std(temps[:,0])
@@ -85,13 +85,13 @@ class wvrPlot(initialize):
         subpl.set_xticklabels('')
         legend([leg[1],'setpoint'],bbox_to_anchor=leg_loc, prop={'size':10})
 
-        subpl=subplot(5,1,2)
-        plot_date(ut,au.smooth(output,20),fmt='b-')
-        ylabel('PID output [bits] (b)')
+        subpl=subplot(7,1,2)
+        plot_date(ut,au.smooth(output[:,0],20),fmt='b-')
+        ylabel('PID output [bits]')
         ylim([-10,4300])
         grid(color='b')
         twinx()
-        heaterPower = (43.*array(output)/4096)**2 / 8.0 #P through 8 ohms 
+        heaterPower = (43.*array(output[:,0])/4096)**2 / 8.0 #P through 8 ohms 
         maxHeaterPower = 43**2/8
         fracHeaterPower = 100*heaterPower/maxHeaterPower
         plot_date(ut,au.smooth(fracHeaterPower,20),fmt='g-')
@@ -102,7 +102,36 @@ class wvrPlot(initialize):
         subpl.set_xticklabels('')
         subplots_adjust(hspace=0.01)
         
-        subpl = subplot(5,1,3)
+        subpl = subplot(7,1,3)
+        if shape(output)[1] >1:
+            plot_date(ut,output[:,1]*1,fmt='r.')
+            plot_date(ut,output[:,2]*2,fmt='m.')
+            plot_date(ut,output[:,3]*3,fmt='c.')
+            ylabel('Relays state')
+            grid(color='gray')
+            ylim([-.1,3.3])
+            subpl.set_xticklabels('')
+            subpl.set_xlim(trange)
+            legend(['RelayIn*1','RelayOut*2','RelayAz*3'],bbox_to_anchor=leg_loc, prop={'size':10})
+        
+        subpl = subplot(7,1,4)
+        if shape(output)[1] >1:
+            plot_date(ut,au.smooth(output[:,4],20),fmt='b-')
+            ylim([-10,5300])
+            grid(color='b')
+            twinx()
+            heaterPower = (array(output[:,4])/5000)**2 
+            maxHeaterPower = 1
+            fracHeaterPower = 100*heaterPower/maxHeaterPower
+            plot_date(ut,au.smooth(fracHeaterPower,20),fmt='g-')
+            ylim([0,106])
+            ylabel('fracPower(g) [%]\n max = 20W')
+            grid(color='green')
+            subpl.set_xlim(trange)
+            subpl.set_xticklabels('')
+            subplots_adjust(hspace=0.01)
+
+        subpl = subplot(7,1,5)
         for i in range(1,11):
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
@@ -112,7 +141,7 @@ class wvrPlot(initialize):
         subpl.set_xlim(trange)
         legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
                     
-        subpl=subplot(5,1,4)
+        subpl=subplot(7,1,6)
         legw=[]
         if self.unit == 'wvr1':
             outtemp = [10,11]
@@ -122,16 +151,16 @@ class wvrPlot(initialize):
                 plot_date(ut,wx['tempC'],'r-')
                 legw.append('NOAA')
         for i in outtemp:
-            plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
+            plot_date(ut, temps[:,i],fmt='-')
             legw.append(leg[i+1])
         ylabel('Outside Temp Zoom [C]')
         xlabel('UT time [s]')
         subpl.set_xlim(trange)
         subpl.xaxis.set_major_formatter(timefmt)
         grid(color='gray')
-        legend(legw,bbox_to_anchor=(leg_loc[0],leg_loc[1]-.7), prop={'size':10})
+        #legend(legw,bbox_to_anchor=(leg_loc[0],leg_loc[1]-.7), prop={'size':10})
 
-        subpl=subplot(5,1,5)
+        subpl=subplot(7,1,7)
         legw=[]
         if self.unit == 'wvr1':
             outtemp = [10,11]
@@ -143,7 +172,7 @@ class wvrPlot(initialize):
                 plot_date(ut,wx['tempC'],'r-')
                 legw.append('NOAA')
         for i in outtemp:
-            plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
+            plot_date(ut, temps[:,i],fmt='-')
             legw.append(leg[i+1])
         ylim(yl)
         ylabel('Outside Temp [C]')
@@ -312,6 +341,7 @@ class wvrPlot(initialize):
         timefmt = DateFormatter('%H:%M:%S')
         utTime, tslow, d, az, el, tsrc = self.wvrR.readSlowFile(fileList)
         if size(tslow) == 1: return
+        fields = d.dtype.fields
         
         nfiles = size(fileList)
         fname = fileList[0].split('_')
@@ -354,7 +384,7 @@ class wvrPlot(initialize):
         ylabel('HOT PWM [%]')
         m = mean(d['HOT_PWM'])
         st = std(d['HOT_PWM'])
-        print "hot pwm mean/std:",m,st
+        print "hot mean/std: %3.3f %3.3f"%(m,st)
         ylim([10,50])
         grid()
         sp.set_xticklabels('')
@@ -365,7 +395,7 @@ class wvrPlot(initialize):
         plot_date(utTime,d['COLD_SETP'],fmt='r-')
         m = mean(d['COLD_TEMP'])
         st = std(d['COLD_TEMP'])
-        print "cold mean/std:",m,st
+        print "cold mean/std: %3.3f %3.3f"%(m,st)
         grid()
         yl=ylim([m-.04,m+.04])
         cap = 'Setp=%3.3f K, Mean=%3.3f K, std= %3.3f mK' \
@@ -394,7 +424,7 @@ class wvrPlot(initialize):
         
         ### plot TP, LNA, NE, CS temps and setp inside WVR
         figure(2, figsize=figsize);clf()
-        sp=subplot(3,1,1)
+        sp=subplot(4,1,1)
         plot_date(utTime, d['TP_TEMP'],fmt='b-')
         plot_date(utTime, d['CS_TEMP'],fmt='r-')
         plot_date(utTime, d['LNA_TEMP'],fmt='g-')
@@ -408,7 +438,7 @@ class wvrPlot(initialize):
         sp.set_xticklabels('')
         sp.set_xlim(trange)
 
-        sp=subplot(3,1,2)
+        sp=subplot(4,1,2)
         plot_date(utTime, au.smooth(d['TP_TEMP']-mean(d['TP_TEMP']),20),fmt='b-')
         plot_date(utTime, au.smooth(d['CS_TEMP']-mean(d['CS_TEMP']),20),fmt='r-')
         plot_date(utTime, au.smooth(d['LNA_TEMP']-mean(d['LNA_TEMP']),20),fmt='g-')
@@ -418,7 +448,7 @@ class wvrPlot(initialize):
         grid()
         sp.set_xlim(trange)
 
-        sp=subplot(3,1,3)
+        sp=subplot(4,1,3)
         plot_date(utTime, au.smooth(d['TP_TEMP']-mean(d['TP_TEMP']),20),fmt='b-')
         plot_date(utTime, au.smooth(d['CS_TEMP']-mean(d['CS_TEMP']),20),fmt='r-')
         plot_date(utTime, au.smooth(d['LNA_TEMP']-mean(d['LNA_TEMP']),20),fmt='g-')
@@ -429,6 +459,26 @@ class wvrPlot(initialize):
         grid()
         sp.set_xlim(trange)
         sp.xaxis.set_major_formatter(timefmt)
+
+        if 'CS_PWM' in fields:
+            sp=subplot(4,1,4)
+            plot_date(utTime, au.smooth(d['CS_PWM'],20),fmt='r.')
+            m1 = mean(d['CS_PWM'])
+            plot_date(utTime, au.smooth(d['BE_PWM'],20),fmt='c.')
+            m2= mean(d['BE_PWM'])
+            ylabel('PWM [%]')
+            xlabel('UT Time')
+            yl= sp.set_ylim([0,100])
+            xl=sp.set_xlim(trange)
+            grid()
+            print "CS PWM mean: %2.2f%%"%m1
+            print "BE PWM mean:%2.2f%%"%m2
+            cap1 = 'CS PWM: %2.1f' %m1
+            cap2 = 'BE PWM: %2.1f' %m2
+            text(xl[0],yl[1]-10,cap1)
+            text(xl[0],yl[1]-20,cap2)
+            sp.xaxis.set_major_formatter(timefmt)
+
         subplots_adjust(hspace=0.01)
         title = fileslow.replace('.txt','_WVR_TEMPS')
         suptitle(title,y=0.95, fontsize=24)
@@ -508,10 +558,32 @@ class wvrPlot(initialize):
         print "Saving %s.png"%title
         savefig(title+'.png')
 
+        #plot chopper current and pwm
+        figure(5, figsize=figsize);clf()
+        sp = subplot(2,1,1)
+        plot_date(utTime, d['CHOP_CURR'],fmt='-')
+        sp.xaxis.set_major_formatter(timefmt)
+        sp.set_xticklabels('')
+        sp.set_ylim([-.02, .2])
+        grid()
+        ylabel('Current [A]')
+        sp = subplot(2,1,2)
+        plot_date(utTime, d['CHOP_PWM'],fmt='-.')
+        subplots_adjust(hspace=0.01)
+        sp.xaxis.set_major_formatter(timefmt)
+        sp.set_xlim(trange)
+        sp.set_ylim([0,100])
+        grid()
+        ylabel('PWM [%]')
+        xlabel('ut time')
+        title = fileslow.replace('.txt','_CHOPPER')
+        suptitle(title,y=0.95, fontsize=24)
+        print "Saving %s.png"%title
+        savefig(title+'.png')
+
         if not inter:
             close('all')
         au.movePlotsToReducDir(self.reducDir)
-
 
     def plotStat(self, fileList, fignum=1, inter=False, verb=True):
         """
@@ -699,13 +771,14 @@ class wvrPlot(initialize):
             plot_date(utwx, wx['wsmsGust'],fmt='g.-')
             legend(['Mean','Gusts'],bbox_to_anchor=leg_loc, prop={'size':10})
         m = nanmean(wx['wsms'])
+        mm = nanmax(wx['wsms'])
         s = nanstd(wx['wsms'])
         ylabel('Wx Wind Speed [m/s]')
         cap = 'Wind Speed: %2.1f +- %2.1f m/s'%(m,s)
         sp.set_xticklabels('')
         sp.set_xlim(trange)
         grid(color='gray')
-        yl=ylim([0,15])
+        yl=ylim([0,max(15,mm)])
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
 
         sp = subplot(4,1,4)

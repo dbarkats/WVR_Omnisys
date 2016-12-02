@@ -1,4 +1,3 @@
-
 import os
 from pylab import *
 
@@ -17,6 +16,7 @@ class wvrReadData(initialize):
 
     def readPIDTempsFile(self, fileList, verb=True):
 
+        
         fileList = au.aggregate(fileList)
         
         fl=[]
@@ -25,6 +25,7 @@ class wvrReadData(initialize):
             
         d=[]
         for filename in fl:
+            date = filename[0:8]
             if not(os.path.isfile(self.dataDir+filename)):
                 print "WARNING: Skipping %s: File missing"%filename
                 continue
@@ -33,9 +34,10 @@ class wvrReadData(initialize):
                 continue
             else:
                 if verb: print "Reading %s"%filename
-                data = genfromtxt(self.dataDir+filename,delimiter='',
-                                  dtype='S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f',
-                                  invalid_raise = False)
+                if self.unit == 'wvr1' and datestr2num(date) < datestr2num('20161215'):
+                    data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False)
+                else:
+                    data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8', invalid_raise = False)
                 d.append(data)
 
         if size(d) == 0: return 0,0,0,0,0,0
@@ -43,7 +45,7 @@ class wvrReadData(initialize):
         utTime = []
         for tstr in d['f0']:
             utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-        sample=arange(size(d))
+        sample=arange(size(d))  # was 'f1'
         t0=d['f2']
         input=d['f3']
         t1=d['f4']
@@ -57,7 +59,18 @@ class wvrReadData(initialize):
         t9=d['f12']
         t10=d['f13']
         t11=d['f14']
-        output=d['f15']
+
+        if size(d.dtype.fields.keys()) > 16:  # added for WVR#2 in June 2016.
+            outputDC = d['f15']
+            stateRelayIn=d['f16']
+            stateRelayOut=d['f17']
+            stateRelayAz=d['f18']
+            outputAz=d['f19']
+            shape(outputDC)
+            shape(outputAz)
+            output =  vstack([outputDC, stateRelayIn, stateRelayOut, stateRelayAz, outputAz]).T 
+        else:
+            output= vstack([d['f15']]).T
         temps=vstack([t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11]).T
 
         utwx, wx = self.readWxFile(fileList,verb=verb)
@@ -146,23 +159,31 @@ class wvrReadData(initialize):
         return (utTime,tslow,d,az,el,tsrc)
 
     def readTiltFile(self, fileList,verb=True):
-        
-        fl = au.aggregate(fileList)
+        """
+        given a list of files, reads the MMCR tilt files
+        and returns an array of times/tilts for each file.
+        returned array has size [4,N].
+        the 4 values are: pitch mean, pitch std, roll mean, roll_std
+        pitch is E-W, roll is N/S. pos pitch is W leading down, pos ronll is  is S leaning dow
+        """
 
+        fl = au.aggregate(fileList)
         d=[]
         utTime = []
         for filename in fl:
+            tstr = '%sT%s'%(filename.split('_')[0],filename.split('_')[1])
+            utTime.append(datetime.datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
             if not(os.path.isfile(self.dataDir+filename)):
                 print "WARNING: Skipping %s: File missing"%filename
+                d.append((nan,nan,nan,nan))
                 continue
             elif os.path.getsize(self.dataDir+filename) == 0:
                 print "WARNING: Skipping %s: File size 0"%filename
+                d.append((nan,nan,nan,nan))
                 continue
             else:
                 if verb: print "Reading %s"%filename
                 e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=2, dtype=None,invalid_raise = False)
-                tstr = '%sT%s'%(filename.split('_')[0],filename.split('_')[1])
-                utTime.append(datetime.datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
                 d.append((e[0][1],e[0][2],e[1][1],e[1][2]))
        
         return (array(utTime),array(d))

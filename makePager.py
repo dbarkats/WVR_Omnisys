@@ -39,7 +39,6 @@ if __name__ == '__main__':
         exit()
 
     up = options.update
-
     rwp = rw.reduc_wvr_pager(unit)
 
     if options.start == None:

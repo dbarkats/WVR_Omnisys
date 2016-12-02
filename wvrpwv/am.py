@@ -9,40 +9,42 @@ import numpy as np
 import matplotlib.pyplot as pl
 from scipy import optimize
 
-import wvrAnalysis
-
-
 ''' am.py
 library for fitting pwv from an atmosphere model 
 and measurements from an Omnisys 4 channel radiometer
 '''
 
-# Hardwired location of your am configuration files
-amDir = '/home/dbarkats/am_cookbook/'
-
 class AMDrive():
 	''' Read and run am files '''
-	def __init__(self,fn, debug=True):
-		self.fn = fn
+	def __init__(self, debug=True):
                 self.debug=debug
 
-	def run_params(self,params):
-		infn = self.fn
-		outfn = tempfile.mktemp('.txt')
-		cmd = 'am %s'%infn
-                if self.debug:
-                        print "am params: f0:%.2f GHz, f1:%.2f GHz, za:%2.2f deg, pwv=%3.3f um "\
-                        %(params[0],params[1],params[2],params[3])
-		for param in params:
-			cmd += ' %f'%param
-                
-		cmd += ' 2>/dev/null > %s'%(outfn)
-                if self.debug: print cmd
-		os.system(cmd)
-		fs,tau,tb = np.loadtxt(outfn,unpack=True)
+	def run_params(self, infn, pars):
 
-		os.unlink(outfn)
-		return fs,tau,tb
+		outfn = infn.replace('.amc','.out')
+		errfn = infn.replace('.amc','.err')
+
+		cmd = 'am %s '%infn
+                if self.debug:
+                        print ("am parameters: f0: %.2f %s, "
+			       "f1: %.2f %s,  df: %.2f %s, "
+			       "za: %2.2f %s, h2o_scale=%2.2f"
+			       %(pars[0],pars[1],pars[2],pars[3],pars[4],
+				 pars[5],pars[6],pars[7],pars[8]))
+		cmd += ("%.2f %s %.2f %s %.2f %s %.2f %s %.2f" 
+			%(pars[0],pars[1],pars[2],pars[3],pars[4],
+			  pars[5],pars[6],pars[7],pars[8]))
+                
+		cmd +=  ' >%s '%outfn
+		cmd += ' 2>%s '%errfn
+                if self.debug: print cmd
+
+		os.system(cmd)
+		fs,tau,tb,trj = np.loadtxt(outfn,unpack=True)
+
+		return fs,tau,tb,trj
+
+
 
 class Layer():
 	''' Parse and render a single layer in an am8.0 amc file '''
@@ -134,20 +136,31 @@ class LayerFile():
 
 		f.close()
 	
-	def run_am(self,pground=680.,tground=245.,h2o=1000.,el=55.,f0=170.,f1=200.):
+	def run_am(self,pground=680.,tground=245.,h2o=1000.,za=0.,f0=170.,f1=200., df=100):
 		'''
 		pground: pressure at ground
 		tground: temperature at ground
 		h2o: pwv in um
+		f0 and f1 in GHz
+		za = zenigh angle : 90 -el [deg]
 
 		'''
-		za = 90. - el
+		fUnits = 'GHz'
+		dfUnits = 'MHz'
+		zaUnits = 'deg'
+
 		fn = tempfile.mktemp('.amc',dir=amDir)  
-                # rescale am Template file
-		self.rescale_amTemplate(fn,pground=pground,tground=tground) 
-                # re-run am for new h2O amounts and zenith angle.
+
+                # rescale am Template file 
+		# comment this out, not sure about this step
+		# self.rescale_amTemplate(fn,pground=pground,tground=tground) 
+                
+		# run am
 		amdrive = AMDrive(fn, debug=self.debug)
-		fs,tau,tb = amdrive.run_params([f0,f1,za,h2o]) 
+		fs,tau,tb = amdrive.run_params([f0,fUnits,
+						f1,fUnits,
+						df,dfUnits, 
+						za,zaUnits])
 
                 #interpolate to 10MHz frequency line.
 		df = f1 - f0
