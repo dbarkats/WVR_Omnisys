@@ -20,13 +20,14 @@ class stepperCmd():
         self.debug=debug
         self.lock = threading.Lock()
         self.ser = serial.Serial()
-        self.lw = logger
+        self.setLogger(logger)
+        #prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        #if logger == None:
+        #    self.lw = logWriter.logWriter(prefix, verbose=False)
+        #else:
+        #    self.lw = logger
         self.posD = -9999.999
-        prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        if logger == None:
-            self.lw = logWriter.logWriter(prefix, verbose=False)
-        else:
-            self.lw = logger
+        
         stepPole = array([0.,   100.,   200.,   300.,   400.,
                           500.,   600.,   700.,   800.,   900.,
                           1000.,  1100.,  1200.,  1300.,  1400.,
@@ -62,6 +63,13 @@ class stepperCmd():
         q = argsort(angle)
         self.step2Angle = scipy.interpolate.interp1d(step,angle,kind='linear')
         self.angle2Step = scipy.interpolate.interp1d(angle[q],step[q],kind='linear')
+
+    def setLogger(self,logger=None):
+        prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        if logger == None:
+            self.lw = logWriter.logWriter(prefix, verbose=False)
+        else:
+            self.lw = logger
 
     def initPort(self):
         try:
