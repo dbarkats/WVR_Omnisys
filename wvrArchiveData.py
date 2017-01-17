@@ -53,9 +53,11 @@ for datafile in filtlist:
     hms = baseName.split('_')[1]
     filegroup = glob.glob(baseName+'*.txt')
     # add Wx file if it exists
-    wxFile = '%s_%s0000_Wx_*_NOAA.txt'%(ymd,hms[0:2])
-    if os.path.isfile(wxFile):
-        filegroup = filegroup+[wxFile]
+    wxFile = glob.glob('%s_%s0000_Wx_*_NOAA.txt'%(ymd,hms[0:2]))
+    print wxFile
+    if wxFile != []:
+        if os.path.isfile(wxFile[0]):
+            filegroup = filegroup+wxFile
     print filegroup
     fileTypes = [n.split('_')[-1] for n in filegroup]
     print "In %s filegroup, there are %d files: %s \n"\

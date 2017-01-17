@@ -112,8 +112,10 @@ class reduc_wvr_pager(initialize):
            
         fileList = glob.glob('*%s.tar.gz'%typ)
         # remove '2016wvrLog.tar.gz', remove daily MMCR files
-        fileList = filter(lambda f: ('2016wvrLog.tar.gz' not in f),fileList)
-        fileList = filter(lambda f: ('MMCR' not in f),fileList)
+        removeFiles = ['2016wvrLog.tar.gz','2017wvrLog.tar.gz','2017_Wx_Spo_NOAA.tar.gz', 'MMCR']
+        for file in removeFiles:
+            fileList = filter(lambda f: (file not in f),fileList)
+
         fileList_scanAz = filter(lambda f: ('scanAz' in f),fileList)
         fileList_tilt = []
         dayList = []
@@ -292,14 +294,26 @@ class reduc_wvr_pager(initialize):
         return the result of ntpstat
 
         """
-        cmd = 'ntpstat'
-        p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
-        aout,aerr = p.communicate()
-        if (verb): print aout,aerr
-        b = aout.split('\n')
-        
-        offset = int(b[1].split()[-2])
-        if ('synchronised to NTP server' in b[0]) and (offset < 100):
+        try:
+            cmd = 'ntpstat'
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+            aout,aerr = p.communicate()
+            if (verb): print aout,aerr
+            b = aout.split('\n')
+            offset = int(b[1].split()[-2])
+        except:
+            cmd = 'ntpq -p'
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+            aout,aerr = p.communicate()
+            if (verb): print aout,aerr
+            b = aout.split('\n')
+            for line in b:
+                if line[0] == '*':
+                    sline = line.split()
+                    offset = float(sline[8])
+                    break
+
+        if (offset < 100):
             print "ntpstat: PASS"
             return 1
         else:
@@ -424,7 +438,7 @@ class reduc_wvr_pager(initialize):
         print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
         print "Inside WVR air Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(input),median(input),max(input),std(input))
         print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
-        print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output),median(output),max(output),std(output))
+        print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output[:,0]),median(output[:,0]),max(output[:,0]),std(output[:,0]))
         print "Az stage Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
         print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(nanmin(wx['wsms']),nanmean(wx['wsms']),nanmax(wx['wsms']),nanstd(wx['wsms']))
 
@@ -432,7 +446,7 @@ class reduc_wvr_pager(initialize):
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, tslow, d = self.wvrR.readStatFile(fl,verb=verb)
+        utTime, d = self.wvrR.readStatFile(fl,verb=verb)
 
         keys = d.dtype.fields.keys()
         print ''
