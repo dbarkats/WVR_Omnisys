@@ -17,6 +17,7 @@ def checkProcess(processName, debug=False, force=False):
     results=os.popen(cmd).read()
     if debug: print results
 
+    print '\n############################################'
     if results=='' : # no process running
         print "no previous %s processes running, passing..."%processName
         pass
@@ -32,14 +33,14 @@ def checkProcess(processName, debug=False, force=False):
             hourStarted = res.split()[11][0:2]
             if int(hourStarted) == lasthour:
                 if (force):
-                    print "Killing the following process: %s because it was started more than 1 hour ago"%pid
+                    print "Killing the following process: %s because it was started more than 1 hour ago \n"%pid
                     print pid, res
                     os.kill(int(pid),signal.SIGTERM)
                 else:
-                    print "Not killing the following process: %s because Force = False. Use -F option to set Force = True"%pid
+                    print "Not killing the following process: %s because Force = False. Use -F option to set Force = True \n"%pid
                     print pid,res
             else:
-                print "Leaving the following process: %s because it was started within last hour"%pid
+                print "Leaving the following process: %s because it was started within last hour \n"%pid
                 print pid, res
             
 
