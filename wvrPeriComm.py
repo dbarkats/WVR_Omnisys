@@ -28,6 +28,7 @@ class wvrPeriComm():
     def __init__(self, logger=None, debug=True):
 
         self.port = "/dev/newportAzAxis"
+        #self.port = "/dev/ttyUSB0"
         self.baudrate = 57600
         self.debug=debug
         self.ser = serial.Serial()
@@ -70,6 +71,7 @@ class wvrPeriComm():
         generic function to send any command and read the results
         cmd should be the address of the rotation stage (1) followed 
         by 2 letter command
+        Ex:
         """
         MSG_CMD = cmd+'\r\n'
         if self.lock.acquire():
@@ -178,17 +180,25 @@ class wvrPeriComm():
 
     def slewAz(self, az=0):
         """
-        slew to specific azimuth
+        slew to specific azimuth between 0 and 360
         """
-        if not self.isHomed:
+        if (az > 360) or (az < -360):
+            print "Error: can only slew to az between 0 and 360"
+            return 0
+            
+        currentAzPos = self.getAzPos()
+        if (not self.isHomed) or (abs(currentAzPos) > 360):
             self.resetAndHomeRotStage()
-        slewSpeed = 40
-        currentPos = self.getAzPos()
-        moveDist = az - currentPos
-        timedist = moveDist / slewSpeed
-        self.lw.write("Slewing from %s to %s at 40deg/s;"%(str(currentPos), str(az)))
+            currentAzPos = 0
+        slewSpeed = 20
+        moveDist = az - currentAzPos
+        timedist = float(moveDist / slewSpeed)
+        self.lw.write("Slewing from %s to %s at %d deg/s;"%(currentAzPos, az, slewSpeed))
+        print("Slewing from %s to %s at %d deg/s;"%(currentAzPos, az, slewSpeed))
+
         self.startRotation(duration=timedist, rotspeed=slewSpeed)
-        time.sleep(timedist + 1)
+        time.sleep(abs(timedist)+1)
+        print self.getAzPos()
 
     def getError(self):
         if self.lock.acquire():

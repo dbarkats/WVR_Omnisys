@@ -24,7 +24,7 @@ class serPort():
         if 'harvard.edu' in hostname:
             self.dataDir = 'wvr_data/'   #symlink to where the data is
         else:
-            self.dataDir = '/home/dbarkats/WVR_Omnisys/data_tmp/'
+            self.dataDir = '/home/dbarkats/wvr_pipeline/data_tmp/'
 
         self.portname = '/dev/arduinoPidTemp'
         #self.portname = '/dev/cu.usbmodem1421'

@@ -41,16 +41,15 @@ if __name__ == '__main__':
                       type= float,
                       help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 3.0 deg/s")
     
-
 (options, args) = parser.parse_args()
 
 #### DEFINE VARIABLES #########
 script = "wvrBeamMap.py"
 azScanningSpeed = options.speed # in deg/s
-minScanEl = 24 # in deg
-maxScanEl = 30 # in deg. Must be greater than  minScanEl
-deltaEl = 0.25 # in deg
-Nsteps = int((maxScanEl - minScanEl)/deltaEl) + 1
+minScanEl = 19 # in deg
+maxScanEl = 29 # in deg. Must be greater than minScanEl
+deltaEl = 0.5 # in deg
+Nsteps = int((maxScanEl - minScanEl)/deltaEl)
 elSteps = minScanEl + arange(Nsteps)*deltaEl
 NscansPerElStep = 1
 oneStepAzScanningDuration =  NscansPerElStep * 360/azScanningSpeed
@@ -104,8 +103,6 @@ daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl,
                     slowfactor=slowfactor, comments="Beam Map observation", 
                     prefix=prefix, debug=False)
 
-#totalAzScanningDuration= wvrAz.getRotationTime(totalAzScanningDuration, azScanningSpeed)
-
 lw.write("start PIDtemps acquisition in the background")
 pid_th = threading.Thread(target=rsp.loopNtimes, args=(totalAzScanningDuration,))
 pid_th.daemon = True
@@ -128,7 +125,6 @@ for El in elSteps:
     lw.write("Waiting until this Az scanning ends")
     
     while wvrAz.monitorAzPos() < azMax-1.0:
-        #lw.write("Going to %d, current AZ: %f, EL:%f "%(azMax, wvrAz.azPos, El))
         azPos = wvrAz.monitorAzPos()
         print "Going to %d, current AZ: %f, EL:%f "%(azMax, azPos, El)  
         time.sleep(2)

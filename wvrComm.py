@@ -168,7 +168,6 @@ class wvrComm():
         if self.debug: print unpacked_data
         print self.getSwRev()
 
-
     def setCalUpload(self):
         """
         upload the wvr calibration file to an tftp server.

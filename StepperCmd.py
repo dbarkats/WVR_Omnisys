@@ -72,6 +72,13 @@ class stepperCmd():
         self.getElPos()
 
     def openPort(self):
+        """
+        if for some reason the port refuses to open. 2 possible fixes.
+        Close the port, and open it with the Arduino IDE. Then the port will open
+        with normal serial communication.
+        OR with port open, do ser.setXonXoff(True), close port and reopen. Then it should work. If xonxoff was already True, do a False and back to True.
+        This problem happens when the USB port is swapped from one plug to the other
+        """
         timeout = 1 #second
         count = 0
         if self.lock.acquire():

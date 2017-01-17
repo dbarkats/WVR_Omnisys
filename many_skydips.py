@@ -9,10 +9,10 @@ from pylab import arange
 ###
 
 
-azList = arange(0,360,10)
-#
-#azList = [   150., 150.,150.]
+#azList = arange(0,360,10)
 
+azList = arange(175,160,-1)
+azList = [154,154,154,154,154,154,154,154,154,154,154,154,154,154,154,154,154,154,154]
 #for k in [0,1,2]:
 for az in azList:
     print  az

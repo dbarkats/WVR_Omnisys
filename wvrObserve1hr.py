@@ -125,7 +125,7 @@ wvrAz.slewAz(skyDipAz)
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
 
-lw.write("Homing El stepper motor")
+lw.write("Initializing El stepper motor")
 wvrEl.initPort()
 
 lw.write("Create wvrDaq object")
@@ -159,13 +159,9 @@ wvrEl.home()
 #    5/ BACK TO ELEVATION OF OBSERVATION
 wvrEl.slewEl(scanEl)
 
-#lw.write("Slewing to az=0")
-#wvrAz.slewAz(0.0)
+lw.write("Slewing to az=0")
+wvrAz.slewAz(0.0)
 
-#Check previous acquisition is done
-#while(daq.isProcessActive()):
-#    lw.write("Waiting for previous recordData to finish")
-#    time.sleep(10)
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
      time.sleep(10)

@@ -5,5 +5,4 @@ src/wvr
 src/setChopAndState
 *.o
 src
-tftp/
 data_tmp/

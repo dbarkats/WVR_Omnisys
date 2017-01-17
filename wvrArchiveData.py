@@ -23,11 +23,11 @@ sys.stdout.flush()
 # List all data files in the temporary directory.
 os.chdir(TEMPDIR);
 #filelist = glob.glob('*_fast.txt');
-filelist = glob.glob('*_log.txt')
+filelist = glob.glob('2017*_log.txt')
 
 # Also build a list of the data which has already been archived.
 os.chdir(ARCHDIR);
-archlist = glob.glob('*.tar.gz');
+archlist = glob.glob('2017*.tar.gz');
 
 os.chdir(oldpwd);
 
@@ -53,7 +53,7 @@ for datafile in filtlist:
     hms = baseName.split('_')[1]
     filegroup = glob.glob(baseName+'*.txt')
     # add Wx file if it exists
-    wxFile = '%s_%s0000_Wx_Summit_NOAA.txt'%(ymd,hms[0:2])
+    wxFile = '%s_%s0000_Wx_*_NOAA.txt'%(ymd,hms[0:2])
     if os.path.isfile(wxFile):
         filegroup = filegroup+[wxFile]
     print filegroup
@@ -67,8 +67,8 @@ for datafile in filtlist:
     os.system("tar czf {} {}".format(archfile,' '.join(filegroup)));
     os.rename(archfile, os.path.join(ARCHDIR, archfile));
 
-os.system("tar czf 2016wvrLog.tar.gz wvrLog.txt")
-os.rename('2016wvrLog.tar.gz', os.path.join(ARCHDIR, '2016wvrLog.tar.gz'));
+os.system("tar czf 2017wvrLog.tar.gz wvrLog.txt")
+os.rename('2017wvrLog.tar.gz', os.path.join(ARCHDIR, '2017wvrLog.tar.gz'));
 os.chdir(oldpwd)
 
 ts = datetime.datetime.now().strftime('%Y%m%dT%H%M%S');

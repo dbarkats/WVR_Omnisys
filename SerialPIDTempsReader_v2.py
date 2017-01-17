@@ -35,7 +35,7 @@ class SerialPIDTempsReader():
             self.method = 2
             self.loc = 'summit'
         elif host == 'wvr1':
-            self.method = 1
+            self.method = 2
             self.loc = 'pole'
         else:
             self.method = 2
@@ -43,7 +43,7 @@ class SerialPIDTempsReader():
         self.baudrate = 9600
         self.plotFig=plotFig
         self.setPoint = 19
-        self.replotTime = 10
+        self.replotTime = 5
         self.fileNameRead = ''
         self.debug= debug
         self.home = os.getenv('HOME')
@@ -113,8 +113,8 @@ class SerialPIDTempsReader():
         close arduinoPIDTemp serial port
         only use if using self.method = 2
         """
-        if self.debug: print "Closing Serial Port"
-        #self.ser.flush()
+        if self.debug: 
+            print "Closing Serial Port"
         self.ser.close()
 
     def checkSerialReady(self):
@@ -252,17 +252,19 @@ class SerialPIDTempsReader():
             plot(self.sample, self.t8,'-')
             plot(self.sample, self.t9,'-')
             plot(self.sample, self.t10,'-')
+            plot(self.sample, self.t11,'-')
             ylabel('Box Temps [C]')
             grid()
             subpl.set_xticklabels('')
             legend(leg[2:11],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
                         
             subplot(4,1,4)
+            plot(self.sample, self.t9,'-')
+            plot(self.sample, self.t10,'-')
             plot(self.sample, self.t11)
             ylabel('Outside Temp [C]')
             xlabel('time [s]')
             grid()
-            show()
             
     def loopNtimes(self, Niter=3600):
         """
@@ -275,7 +277,6 @@ class SerialPIDTempsReader():
         if self.method == 2:
             self.openSerialPort()
             time.sleep(0.1)
-            # self.checkSerialReady()
 
         elapsed_seconds = 0
         while(elapsed_seconds < Niter):
@@ -284,6 +285,7 @@ class SerialPIDTempsReader():
                 elapsed_seconds = (self.tnow-self.tstart).total_seconds()
                 if self.plotFig:
                     self.plotTemps()
+
             except KeyboardInterrupt:
                 if self.method==2 : self.closeSerialPort()
                 self.closeFile()

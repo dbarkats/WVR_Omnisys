@@ -12,7 +12,6 @@ import logWriter
 import threading
 from optparse import OptionParser
 
-
 def infiniteLoop1(Nsecs):
     dt = 0
     while(dt < Nsecs):
@@ -81,7 +80,7 @@ lw.write("create PIDTemps object")
 # Acquire data
 lw.write("start PIDtemps acquisition in the background")
 time.sleep(1)
-tdaq1 = threading.Thread(target=infiniteLoop1,args=(2000,))
+tdaq1 = threading.Thread(target=infiniteLoop1,args=(100,))
 tdaq1.daemon=True
 tdaq1.start()
 time.sleep(1)

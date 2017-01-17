@@ -1,0 +1,3 @@
+MAILTO=dbarkats@cfa.harvard.edu
+00 * * * *  nice -n -19 $HOME/wvr_pipeline/wvrBeamMap.py &>>  $HOME/wvr_data/wvrLog.txt
+10 * * * *   /home/dbarkats/wvr_pipeline/wvrArchiveData.py 

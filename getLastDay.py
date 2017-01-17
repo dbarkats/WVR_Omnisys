@@ -33,6 +33,6 @@ if __name__ == '__main__':
 
     fmt = "%Y%m%d*"
     
-    cmd = 'ls -lrt $(date +'+fmt+ ' -d\"%d days ago\")*%s*'%(day,prefix)
+    cmd = 'ls -lrt $HOME/wvr_data/$(date +'+fmt+ ' -d\"%d days ago\")*%s*'%(day,prefix)
     # print cmd
     os.system(cmd)

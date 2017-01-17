@@ -4,7 +4,6 @@ from pylab import *
 import analysisUtils as au
 from initialize import initialize
 
-
 class wvrReadData(initialize):
     
     def __init__(self, unit=None):
@@ -13,10 +12,8 @@ class wvrReadData(initialize):
 
         initialize.__init__(self, unit)
 
-
     def readPIDTempsFile(self, fileList, verb=True):
 
-        
         fileList = au.aggregate(fileList)
         
         fl=[]
@@ -34,9 +31,12 @@ class wvrReadData(initialize):
                 continue
             else:
                 if verb: print "Reading %s"%filename
-                if self.unit == 'wvr1' and datestr2num(date) < datestr2num('20161215'):
-                    data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False)
-                else:
+                if self.unit == 'wvr1' :
+                    if datestr2num(date) < datestr2num('20161215'):
+                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False)
+                    else:
+                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8,f8,f8,f8,f8', invalid_raise = False)
+                elif self.unit == 'wvr2':
                     data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8', invalid_raise = False)
                 d.append(data)
 
@@ -44,7 +44,10 @@ class wvrReadData(initialize):
         d = concatenate(d,axis=0)
         utTime = []
         for tstr in d['f0']:
+            #try:
             utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+            #except:
+            #    utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
         sample=arange(size(d))  # was 'f1'
         t0=d['f2']
         input=d['f3']
@@ -236,7 +239,12 @@ class wvrReadData(initialize):
         for f in fileList:
             ymd = f.split('_')[0]
             hms = f.split('_')[1]
-            fl.append('%s_%s0000'%(ymd,hms[0:2])+'_Wx_Summit_NOAA.txt')
+            if self.unit == 'wvr1':
+                ext = 'Spo'
+            elif self.unit == 'wvr2':
+                ext = 'Summit'
+            filename = '%s_%s0000_Wx_%s_NOAA.txt'%(ymd,hms[0:2],ext)
+            fl.append(filename)
         fl = unique(fl)
         
         wx=[]
@@ -245,7 +253,11 @@ class wvrReadData(initialize):
             if (verb): print "Reading %s"%filename
             if (type=='NOAA'):
                 if os.path.isfile(filename):
-                    e = genfromtxt(filename,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
+                    if self.unit == 'wvr2':
+                        e = genfromtxt(filename,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
+                    elif self.unit == 'wvr1':
+                        e = genfromtxt(filename,dtype="S26,i,S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",names = ['ut','sample','station','wsms','wddeg','wsmsGust','wsms10','wddeg10','wsmsGust10','wsms27','wddeg27','wsmsGust27','presMb','dewC','tempC','tempC10','tempC27','logT','batV'], delimiter=',', invalid_raise = False)
+                        e = au.rmfield(e,'station')
                 else:
                     print "WARNING: %s file missing. skipping... "%filename
                     continue
@@ -263,7 +275,7 @@ class wvrReadData(initialize):
                 utTime.append(datetime.datetime.strptime(ut,'"%Y-%m-%d %H:%M:%S"'))
         else:
             for mjd in wx['mjd']:
-                ut=au.mjdToUT(mjd)
+                ut = au.mjdToUT(mjd)
                 utTime.append(datetime.datetime.strptime(ut,'%Y-%m-%d %H:%M:%S UT'))
 
         #### add Rh to wx array if not present

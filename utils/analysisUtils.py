@@ -72,6 +72,12 @@ def aggregate(object):
     else:
         return [object]
 
+def rmfield(a, *fieldnames_to_remove ):
+    """
+    Given a structured array a, this will remove a field name from a.
+
+    """
+    return a[ [ name for name in a.dtype.names if name not in fieldnames_to_remove ] ]
 
 def smooth(x, window_len=10, window='hanning'):
     """

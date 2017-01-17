@@ -40,7 +40,7 @@ class SerialPIDTempsReader():
         self.debug= debug
         self.home = os.getenv('HOME')
         self.dataDir = self.home+'/wvr_data/'   #symlink to where the data is
-            
+
         if prefix == '':
             self.prefix = self.getPrefixTimeStamp()
         else:
@@ -230,6 +230,7 @@ class SerialPIDTempsReader():
             #if self.counter == 5:
             legend(['Op-amp','Gnd plate','heater air','24V PS','E pink foam',
                     'Arduino holder','stepper mtr','48V PS','Az mtr'],bbox_to_anchor=(1.12, 1.03), prop={'size':10})
+            ylim([0,30])
 
             subplot(4,1,4)
             plot(self.sample, self.t10)
