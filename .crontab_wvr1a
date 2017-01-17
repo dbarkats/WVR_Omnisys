@@ -1,7 +1,7 @@
 MAILTO=dbarkats@cfa.harvard.edu
 SHELL=/bin/bash
 
-15 * * * *   $HOME/wvr1data_from_omega0.bash
+15 * * * *   $HOME/wvr_pipeline/wvr1data_from_omega0.sh
 10 1-23 * * * $HOME/wvr_pipeline/makePager.py -u -t 0
 10 0 * * * $HOME/wvr_pipeline/makePager.py -t 1
 
