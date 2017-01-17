@@ -25,8 +25,7 @@ if __name__ == '__main__':
                       dest = "deltat",
                       type=int,
                       default=2,
-                      help="-t, how many days back to regenerate the plots.  Default =2")
-    
+                      help="-t, how many days back to regenerate the plots.  Default =2")    
     parser.add_option("-l",
                       dest = "unit",
                       default="wvr1",

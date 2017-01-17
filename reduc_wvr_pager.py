@@ -459,7 +459,7 @@ class reduc_wvr_pager(initialize):
         """
         gets dateList from list of existing 24hr plots
         """
-        print "Getting dateList from plots"
+        print "### Getting dateList from plots"
         cwd = os.getcwd()
         os.chdir(self.reducDir)
         plotFileList= glob.glob('201?????_24??_WVR_TEMPS.png')
@@ -563,7 +563,6 @@ class reduc_wvr_pager(initialize):
         outdir = self.reducDir
         fname='%s/wvr_plots.html'%outdir
         dt=dateList[-1];
-        dt0 = dateList[-2]
         h=open(fname,'w');
         
         h.write('<style type="text/css"> \n')

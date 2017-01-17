@@ -33,9 +33,11 @@ class wvrReadData(initialize):
                 if verb: print "Reading %s"%filename
                 if self.unit == 'wvr1' :
                     if datestr2num(date) < datestr2num('20161215'):
+                        print "reading wvr1 data pre- 20161215"
                         data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False)
                     else:
-                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8,f8,f8,f8,f8', invalid_raise = False)
+                        print "reading wvr1 data post 20161215"
+                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8,f8,f8,f8,f8', invalid_raise = False, skip_header=2, skip_footer=2)
                 elif self.unit == 'wvr2':
                     data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8', invalid_raise = False)
                 d.append(data)
