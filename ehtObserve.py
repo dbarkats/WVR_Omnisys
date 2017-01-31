@@ -40,6 +40,11 @@ if __name__ == '__main__':
                       type= int,
                       help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
         
+    parser.add_option("-e",
+                      dest="ehtScheduleFile",
+                      default = '',
+                      help="-e, name of the eht schedule file to observe. Default is eht_schedule.txt")
+
     parser.add_option("-z",
                       dest="azimuth",
                       default = 150.0,
@@ -64,6 +69,7 @@ script = "ehtObserve.py"
 skyDipDuration =  60  # in seconds
 skyDipAz = options.azimuth # in deg
 observingDuration = options.duration # in seconds
+ehtScheduleFile = options.ehtScheduleFile
 
 #### START RUNNING skyDip part ###############
 ts = time.strftime('%Y%m%d_%H%M%S')
@@ -121,14 +127,10 @@ tdaq1.start()
 time.sleep(1)
 
 lw.write("Doing Skydip ...")
-#    1/ HOME
-wvrEl.home()
-#    2/ GO TO END OF MOTION at el=13.8 (steps=3200)
-wvrEl.slewMinEl()
-#    4/ BACK TO home
-wvrEl.home()
-#    5/ BACK TO ELEVATION OF OBSERVATION
-wvrEl.slewEl(45)
+wvrEl.home()       #    1/ HOME
+wvrEl.slewMinEl()  #    2/ GO TO MIN ELEVATION at el=13.8 (steps=3200)
+wvrEl.home()       #    3/ BACK TO home
+wvrEl.slewEl(45)   #    4/ BACK TO ELEVATION OF OBSERVATION
 
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
@@ -146,7 +148,7 @@ lw.close()
 ##### START Running EHT obsering part ########
 
 # parse eht schedule file
-eht = parseEhtSchedule()
+eht = parseEhtSchedule(ehtScheduleFile)
 
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_eht'
@@ -181,14 +183,17 @@ time.sleep(1)
 # determine what source to look at and for how long 
 startTime = datetime.now()
 endTime = startTime + timedelta(seconds = observingDuration) # obs ending time
-print 'EHT observing time %d'%observingDuration
+print 'EHT total observing duration %d'%observingDuration
 iold = -1;
 while datetime.now() < endTime:
         now = datetime.now()
 	tLeft = endTime - now
 	i = find_source(now, eht['time'])
-	obsTime = eht['time'][i+1] - now; # need to account of az/el motion to next source
-	obsTime = min(obsTime, tLeft)
+        if i == size(eht['time'])-1:
+            obsTime = tLeft
+        else:
+            obstime = eht['time'][i+1] - now
+            obsTime = min(obsTime, tLeft)
         if (i != iold):
                 el = eht['EL'][i]
                 az = eht['AZ'][i]
@@ -196,7 +201,7 @@ while datetime.now() < endTime:
                 wvrAz.slewAz(az)
                 wvrEl.slewEl(el)
         else:
-                 print "contiuing on this source without doing anything"
+                 print "continuingto observe on this source"
         time.sleep(10)
         iold = i
 

@@ -11,8 +11,9 @@ def parseEhtSchedule(file = 'eht_schedule.txt'):
     Comma delimited
     Returns a structured array
     """
+    print("Reading %s"%file)
     conv = {0: lambda s: datetime.strptime(s, '%Y-%m-%dT%H:%M:%S')}
-    eht = genfromtxt(file,delimiter=',',names=True,skip_header=4,dtype=None, converters=conv)
+    eht = genfromtxt(file,comments='#', delimiter=',', names=['time','src','EL','AZ'],dtype=None, converters=conv, invalid_raise=False)
 
     return eht
 
@@ -23,9 +24,12 @@ def find_source(tnow, tsource):
     and tsource is an array of datetime (parsed from eht schedule observing file)
     """
     # if t is out of tsource range
-    if tnow < tsource[0] or tnow > tsource[-1]:
-        print('Current time %s outside source time range.'%tnow)
-        return None
+    if tnow < tsource[0]:
+         print('Current time %s earlier than  source time range starting at %s '%(tnow,tsource[0]))
+         return 0
+    if tnow > tsource[-1]:
+        print('Current time %s later than source time range ending at %s'%(tnow,tsource[-1]))
+        return size(tsource)-1
         
     # find index of source we should be observing now
     inds = find(tsource < tnow)
