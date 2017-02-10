@@ -60,7 +60,7 @@ if ':' not in options.device:
     elif 'wvr1' in host:
         arduinoPidTemp = '2341:003e'
         arduinoElAxis = '2341:0042'
-    device = eval(device)
+    device = eval(options.device)
 else:
     device = options.device
     
