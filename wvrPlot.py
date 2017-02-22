@@ -804,3 +804,70 @@ class wvrPlot(initialize):
         return (utwx, wx)
 
 
+    def plotTilt(self, fileList, inter=False, verb=True):
+        if inter:
+            ion()
+        else:
+            ioff()
+        
+        timefmt = DateFormatter('%H:%M:%S')
+        nfiles = size(fileList)
+        print "Loading %d Tilt files"%nfiles
+        uttime, d = self.wvrR.readTiltFile(fileList)
+
+        fname = fileList[0].split('_')
+
+        figsize= (36,12)
+        leg_loc = (1.03,1.03)
+        filetilt = '%s_2400.txt'%(fname[0])
+        trange=[uttime[1].replace(hour=0,minute=0,second=0),
+               uttime[-1].replace(hour=23,minute=59,second=59)]
+
+        fignum = 1
+        figure(fignum, figsize=figsize);clf()
+
+        sp = subplot(2,1,1)
+        plot_date(uttime, d[:,0],fmt='g.-')
+        legstr1 = 'Pitch Mean'
+        plot_date(uttime, d[:,2],fmt='r.-')
+        legstr2 = 'Roll Mean'
+        sp.set_xticklabels('')
+        sp.set_xlim(trange)
+        m0 = nanmean(d[:,0])
+        m2 = nanmean(d[:,2])
+        grid(color='gray')
+        ylabel('Tilt [Deg.]')
+        yl=ylim([-.5,.5])
+        xl=xlim()
+        cap = 'Pitch Day Avg.: %0.3f Deg. \n Roll Day Avg.: %0.3f Deg.'%(m0,m2)
+        text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
+        legend([legstr1,legstr2])
+
+        sp = subplot(2,1,2)
+        plot_date(uttime, d[:,1],fmt='g.-')
+        legstr3='Pitch Std. Dev.'
+        plot_date(uttime, d[:,3],fmt='r.-')
+        legstr4='Roll Std. Dev.'
+        sp.set_xticklabels('')
+        sp.set_xlim(trange)
+        m1 = nanmean(d[:,1])
+        m3 = nanmean(d[:,3])
+        grid(color='gray')
+        ylabel('Deg.')
+        xlabel('Time')
+        yl=ylim([0,.1])
+        xl=xlim()
+        cap = 'Day Avg. Pitch Std. Dev.: %0.3f Deg. \n Day Avg. Roll Std. Dev.: %0.3f Deg.'%(m1,m3)
+        text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
+        legend([legstr3,legstr4])
+        sp.xaxis.set_major_formatter(timefmt)
+        subplots_adjust(hspace=0.01)
+        xlabel('UT time')
+        title = filetilt.replace('.txt','_Tilt')
+        suptitle(title,y=0.95, fontsize=20)
+        print "Saving %s.png"%title
+        savefig(title+'.png')
+
+        au.movePlotsToReducDir(self.reducDir)
+
+        return (uttime, d)
