@@ -32,6 +32,12 @@ if __name__ == '__main__':
     #options ....
     parser = OptionParser(usage=usage)
     
+    parser.add_option("-a",
+                      dest="skipAzScan",
+                      action="store_true",
+                      default=False,
+                      help="-a, skipAzScan. If True, this prevents az stage homing and susequent az stage scanning. Default is False.")
+
     parser.add_option("-v",
                       dest="verbose",
                       action="store_true",
@@ -116,11 +122,12 @@ else:
 lw.write("create wvrAz object")
 wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
 
-lw.write("Resetting and Homing Az stage")
-wvrAz.stopRotation()
-wvrAz.resetAndHomeRotStage()
-lw.write("Slewing to az=%3.1f"%skyDipAz)
-wvrAz.slewAz(skyDipAz)
+if not(options.skipAzScan):
+    lw.write("Resetting and Homing Az stage")
+    wvrAz.stopRotation()
+    wvrAz.resetAndHomeRotStage()
+    lw.write("Slewing to az=%3.1f"%skyDipAz)
+    wvrAz.slewAz(skyDipAz)
 
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
@@ -159,8 +166,9 @@ wvrEl.home()
 #    5/ BACK TO ELEVATION OF OBSERVATION
 wvrEl.slewEl(scanEl)
 
-lw.write("Slewing to az=0")
-wvrAz.slewAz(0.0)
+if not(options.skipAzScan):
+    lw.write("Slewing to az=0")
+    wvrAz.slewAz(0.0)
 
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
@@ -197,10 +205,11 @@ tPid2.daemon = True
 tPid2.start()
 time.sleep(1)
 
-lw.write("start az rotation")
-wvrAz.setLogger(lw)
-wvrAz.startRotation(azScanningDuration, azScanningSpeed)
-azScanningDuration= wvrAz.getRotationTime(azScanningDuration, azScanningSpeed)
+if not(options.skipAzScan):
+    lw.write("start az rotation")
+    wvrAz.setLogger(lw)
+    wvrAz.startRotation(azScanningDuration, azScanningSpeed)
+    azScanningDuration= wvrAz.getRotationTime(azScanningDuration, azScanningSpeed)
 
 lw.write("start wvr data acquisition in the foreground")
 (nfast, nslow) = daq.recordData(azScanningDuration)
