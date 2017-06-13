@@ -38,4 +38,4 @@ class initialize():
 
         self.reducDir = self.home+'/%s_reducplots/'%self.unit
         self.dataDir = self.home+'/%s_data/'%self.unit
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
+        self.wxDir = '/n/holylfs/LABS/kovac_lab/keck/wvr_products/wx_reduced/'
