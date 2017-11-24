@@ -122,8 +122,6 @@ else:
 lw.write("create wvrAz object")
 wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
 
-lw.write("Az error from last run: {0}".format(wvrAz.getError()))
-
 if not(options.skipAzScan):
     lw.write("Resetting and Homing Az stage")
     wvrAz.stopRotation()
