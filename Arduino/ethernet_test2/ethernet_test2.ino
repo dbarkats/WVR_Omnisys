@@ -9,12 +9,13 @@
 //    print t1-t0
 //    dt.append(t1-t0)
 
-
 #include <Ethernet2.h>
 
 // Define Ethernet shield settings
 const int port = 4321;
-byte ip[] = {131,142,156,77};
+//byte ip[] = {131,142,156,77};
+byte ip[] = {192,168,168,233};
+
 byte mac[] = {0x90, 0xA2, 0xDA, 0x10, 0xDD, 0xCD};
 EthernetServer server = EthernetServer(port);
 
