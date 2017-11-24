@@ -11,7 +11,7 @@ def checkProcess(processName, debug=False, force=False):
     processName should be 'wvrObserve1hr.py', or 'wvrNoise.py'
     """
     # check if a process called "processName" is present
-    cmd = 'ps -elf |grep  %s |grep -v grep|grep -v checkProcess.py'%processName
+    cmd = "ps -eo etimes,pid,cmd | grep {0} | grep -v grep | grep -v checkProcess.py".format(processName)
     if debug: print cmd
     
     results=os.popen(cmd).read()
@@ -24,14 +24,9 @@ def checkProcess(processName, debug=False, force=False):
     else:
         resList = results.split('\n')
         for res in resList[:-1]:
-            pid = res.split()[3]
+            pid = res.split()[1]
             if debug:  print pid
-            now = datetime.datetime.now()
-            lasthour = (now-datetime.timedelta(hours=1)).hour
-            if debug: print "Now: %s"%now
-            # get start times
-            hourStarted = res.split()[11][0:2]
-            if int(hourStarted) == lasthour:
+            if int(res.split()[0]) > 3600:
                 if (force):
                     print "Killing the following process: %s because it was started more than 1 hour ago \n"%pid
                     print pid, res
