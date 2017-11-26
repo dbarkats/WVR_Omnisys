@@ -23,7 +23,7 @@
 
 //#define MOTORDEBUG
 
-#define MICROSTEPS 16         // 8 or 16
+#define MICROSTEPS 8         // 8 or 16
 
 #define MOTOR1_A 2
 #define MOTOR1_B 3

@@ -36,21 +36,14 @@ void loop()
  
     // read bytes from the incoming client and write them back
     // to any clients connected to the server:
-    int userInput = client.parseInt(); // Parse the command
-     if (userInput == 0) {
-       server.print(userInput) ;     
-       server.print(" ");
-       server.println("El Pos requested") ;
-     }  
-     else if (userInput == -9999) {
-       client.print(userInput) ;     
-       client.print(" ");
-       client.println("Homing request") ;
-     }  
-     else {
-      client.print(userInput) ;     
-      client.print(" ");
-      client.println("Not el request");
-     }
+    String Input  = client.readString();
+    String whichMotor = Input.substring(0,1);
+    server.print(whichMotor);
+    int xpos = Input.substring(1).toInt();
+    if  (xpos == 1000 ) {
+     server.println("position 1000") ;
+    } else {
+     server.println(xpos) ;
+    }
   }
 }

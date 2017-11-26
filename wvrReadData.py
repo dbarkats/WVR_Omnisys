@@ -161,16 +161,17 @@ class wvrReadData(initialize):
         tsrc= np.vstack([tsrc0,tsrc1,tsrc2,tsrc3]).T # array of N rows by 4 columns
         return (utTime,tslow,d,az,el,tsrc)
 
-    def readTiltFile(self, fileList,verb=True):
+    def readTiltFile(self, fl,verb=True):
         """
+        Tilt files only available at Summit
         given a list of files, reads the MMCR tilt files
         and returns an array of times/tilts for each file.
         returned array has size [4,N].
         the 4 values are: pitch mean, pitch std, roll mean, roll_std
-        pitch is E-W, roll is N/S. pos pitch is W leading down, pos ronll is  is S leaning dow
+        pitch is E-W, roll is N/S. pos pitch is W leaning down, pos roll is S leaning down
         """
 
-        fl = au.aggregate(fileList)
+        fl = au.aggregate(fl)
         d=[]
         utTime = []
         for filename in fl:

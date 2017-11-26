@@ -111,6 +111,7 @@ class reduc_wvr_pager(initialize):
             os.chdir(self.dataDir)
            
         fileList = glob.glob('*%s.tar.gz'%typ)
+
         # remove '2016wvrLog.tar.gz', remove daily MMCR files
         removeFiles = ['2016wvrLog.tar.gz','2017wvrLog.tar.gz','2017_Wx_Spo_NOAA.tar.gz', 'MMCR']
         for file in removeFiles:
