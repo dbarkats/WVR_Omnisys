@@ -97,6 +97,7 @@ class stepperCmd():
                     self.ser.baudrate = self.baudrate
                     self.ser.open()
                     while((self.ser.inWaiting() < 0) or (count >= timeout)):
+                        print "Waiting"
                         time.sleep(.002)
                         count = count+0.002
                         self.lw.write(self.ser.readline())

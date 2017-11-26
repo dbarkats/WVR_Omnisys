@@ -126,8 +126,8 @@ if not(options.skipAzScan):
     lw.write("Resetting and Homing Az stage")
     wvrAz.stopRotation()
     wvrAz.resetAndHomeRotStage()
-    lw.write("Slewing to az=%3.1f"%skyDipAz)
-    wvrAz.slewAz(skyDipAz)
+    #lw.write("Slewing to az=%3.1f"%skyDipAz)
+    #wvrAz.slewAz(skyDipAz)
 
 lw.write("create wvrEl object")
 wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
@@ -158,17 +158,21 @@ time.sleep(1)
 lw.write("Doing Skydip ...")
 # Skydip:
 #    1/ HOME
+lw.write("Skydip: Home")
 wvrEl.home()
 #    2/ GO TO END OF MOTION at el=13.8 (steps=3200)
+lw.write("Skydip: slewMinEl")
 wvrEl.slewMinEl()
 #    4/ BACK TO home
+lw.write("Skydip: Home")
 wvrEl.home()
 #    5/ BACK TO ELEVATION OF OBSERVATION
+lw.write("Skydip: scanEl")
 wvrEl.slewEl(scanEl)
-
 if not(options.skipAzScan):
-    lw.write("Slewing to az=0")
-    wvrAz.slewAz(0.0)
+    #lw.write("Slewing to az=0")
+    #wvrAz.slewAz(0.0)
+    pass
 
 while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
@@ -183,6 +187,9 @@ if options.onlySkydip:
     exit()
 lw.close()
 
+#lw.write("Joining thread")
+tPid1.join(timeout=30)
+tPid1Exited = not tPid1.isAlive()
 ##### START Running azscan part ########
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_scanAz'
@@ -196,14 +203,17 @@ daq.setPrefix(prefix)
 daq.setComments('Az Scanning Observation')
 daq.setLogger(lw)
 
-lw.write("create PIDTemps object")
-rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
-
-lw.write("start PIDtemps acquisition in the background")
-tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration,))
-tPid2.daemon = True
-tPid2.start()
-time.sleep(1)
+if not tPid1.isAlive():
+    lw.write("create PIDTemps object")
+    rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
+    
+    lw.write("start PIDtemps acquisition in the background")
+    tPid2 = threading.Thread(target=rsp.loopNtimes,args=(azScanningDuration,))
+    tPid2.daemon = True
+    tPid2.start()
+    time.sleep(1)
+else:
+    lw.write("skyDip PIDTemps failed to exit. Can't create scanAz PIDTemps object.")
 
 if not(options.skipAzScan):
     lw.write("start az rotation")

@@ -117,16 +117,15 @@ daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl,
                     slowfactor=slowfactor, comments="wvr Noise staring observation", 
                     prefix = prefix, debug=False)
 
-if wvrOnly:
-    lw.write("create PIDTemps object")
-    rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+lw.write("create PIDTemps object")
+rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 
-    # Acquire PID Temp data
-    lw.write("start PIDtemps acquisition in the background")
-    tPid = threading.Thread(target=rsp.loopNtimes,args=(duration,))
-    tPid.daemon = True
-    tPid.start()
-    time.sleep(1)
+# Acquire PID Temp data
+lw.write("start PIDtemps acquisition in the background")
+tPid = threading.Thread(target=rsp.loopNtimes,args=(duration,))
+tPid.daemon = True
+tPid.start()
+time.sleep(1)
 
 lw.write("start wvr data acquisition in the foreground")
 (nfast, nslow) = daq.recordData(duration)

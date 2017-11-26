@@ -1,4 +1,5 @@
 '''
+        iPython.embed()
 Scripts to generate reduc plots of the WVR data.
 
 '''
@@ -436,6 +437,9 @@ class reduc_wvr_pager(initialize):
 
         print ''
         print '#############################################'
+        if utTime == 0:
+            print "PID temps files are empty. Skipping"
+            return
         print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
         print "Inside WVR air Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(input),median(input),max(input),std(input))
         print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
