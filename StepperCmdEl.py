@@ -1,6 +1,4 @@
-import serial
-import socket
-import sys
+import Socket as S
 import time
 import datetime
 import threading
@@ -10,23 +8,20 @@ from pylab import array, argsort
 
 class stepperCmdEl():
     """
-    Class to control the elevation axis stepper
+    Class to control the elevation axis stepper.
+    Implemented in 2017 when we transitionned to ethernet communication 
+    with the arduinoElAxis.
+    Previous implementation of elAxis control is in StepperCmd.py
+    Uses the home made Socket.py
     """
     
     def __init__(self, logger=None, debug=True):
-        hostname = socket.gethostname()
-        self.port = '/dev/arduinoElAxisAlt'
-        self.baudrate = 57600
+        hostname = S.socket.gethostname()
+        self.ip = '192.168.168.233' # IP address of az/el arduino
+        self.port = 4321
         self.debug=debug
         self.lock = threading.Lock()
-        self.ser = serial.Serial()
         self.setLogger(logger)
-        #prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        #if logger == None:
-        #    self.lw = logWriter.logWriter(prefix, verbose=False)
-        #else:
-        #    self.lw = logger
-        self.posD = -9999.999
         
         stepPole = array([0.,   100.,   200.,   300.,   400.,
                           500.,   600.,   700.,   800.,   900.,
@@ -66,6 +61,7 @@ class stepperCmdEl():
         q = argsort(angle)
         self.step2Angle = scipy.interpolate.interp1d(step,angle,kind='linear')
         self.angle2Step = scipy.interpolate.interp1d(angle[q],step[q],kind='linear')
+        self.initPort()
 
     def setLogger(self,logger=None):
         prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -84,52 +80,37 @@ class stepperCmdEl():
 
     def openPort(self):
         """
-        if for some reason the port refuses to open. 2 possible fixes.
-        Close the port, and open it with the Arduino IDE. Then the port will open
-        with normal serial communication.
-        OR with port open, do ser.setXonXoff(True), close port and reopen. Then it should work. If xonxoff was already True, do a False and back to True.
-        This problem happens when the USB port is swapped from one plug to the other
+        
         """
-        timeout = 1 #second
-        count = 0
         if self.lock.acquire():
             try:
-                if not self.ser.isOpen():
-                    if self.debug: print "Opening port: %s"%self.port
-                    self.ser.port = self.port
-                    self.ser.baudrate = self.baudrate
-                    self.ser.open()
-                    while((self.ser.inWaiting() < 0) or (count >= timeout)):
-                        time.sleep(.002)
-                        count = count+0.002
-                        self.lw.write(self.ser.readline())
-                    status = 0
-                else:
-                    if self.debug: print "Serial port is already in use. Close before opening"
-                    status = 1
+                if (self.debug): print "Opening socket ip %s"%self.ip
+                self.s = S.Socket(S.socket.AF_INET, S.socket.SOCK_STREAM)
+                self.s.connect((self.ip,self.port))
+                status = 0
             except:
-                self.lw.write('Cannot open Serial port %s at %d'%(self.port,self.baudrate))
+                self.lw.write('Cannot open socket ip: %s at port %d'%(self.ip,self.port))
                 status = 2
             self.lock.release()
         else:
-            print "could not acquire lock (StepperCmd.openPort)"
+            print "could not acquire lock (StepperCmdEl.openPort)"
             status = 3
         return status
 
     def closePort(self):
         if self.lock.acquire():
             try:
-                if (self.debug): print "Closing Port %s"%self.port
-                self.ser.flush()
-                self.ser.close()
+                if (self.debug): print "Closing socket ip %s"%self.ip
+                self.s.close()
             except:
-                if (self.debug): print "%s port is already closed"%self.port
+                if (self.debug): print "%s socket ip is already closed"%self.ip
             self.lock.release()
         else:
             print "could not acquire lock (StepperCmd.closePort)"
         
     def home(self):
         self.stepMotor('-9999')
+        self.getElPos()
 
     def slewMinEl(self):
         self.slewEl(13.8)
@@ -175,28 +156,24 @@ class stepperCmdEl():
         returns 0 if all is well
         """
         if type(Nsteps) != str:
-            self.lw.write("Nsteps must be a string of integer between 0 and 3200")
+            self.lw.write("Nsteps must be a string of integer") 
+            print "Nsteps must be a string integer"
             return 1
 
         if int(Nsteps) > 3200 or int(Nsteps) < 0:
             if int(Nsteps) != -9999:
                 self.lw.write("Nsteps must be between 0 and 3200. Review things")
                 return 1
-
         posD = self.getElPos()
         if self.lock.acquire():
             if Nsteps != '-9999':
                 dist = abs(int(Nsteps)-self.posS)
                 if self.debug: print self.posS, Nsteps, dist
-                waitTime = min(dist/220.,15.0)
+                waitTime = min(dist/200.,15.0)
             else:
                 waitTime = 15.0
-        
-            if not self.ser.isOpen():
-                self.openPort()
-            # send command
-            self.ser.write('e'+Nsteps) #the 'e' is necessary to specify the el motor.
-            #self.ser.write(Nsteps)
+
+            self.s.send('e'+Nsteps) 
             self.lock.release()
             if int(Nsteps) == -9999:
                 logMsg = 'Computer commanded Arduino to home'
@@ -204,30 +181,9 @@ class stepperCmdEl():
                 logMsg = 'Computer commanded Arduino to move to %s steps'%Nsteps
             self.lw.write(logMsg)
 
-            ## check that the response matches with what we sent
-            #while(self.ser.inWaiting() < 0):
-            #    time.sleep(0.1)
-            #ret = self.ser.readline()
-            #if (ret.split()[0] == 'Moving') and (ret.split()[2] == Nsteps):
-            #    logMsg = 'Arduino confirmed stepper moving to %s steps'%Nsteps
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #    
-            #elif (ret.split()[0] == 'Homing'):
-            #    logMsg = 'Arduino confirmed stepper is homing to steps = 0'
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #elif (ret.split()[0] == 'You'):
-            #    logMsg = 'You hit the limit switch and rehomed, current position 0'
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #else:
-            #    print "WARNING,WARNING,WARNING"
-            #    print "Response does not match what we expect. What to do"
-            #    print "Expected %s steps, got %s steps"%(Nsteps, ret)
-    
             self.lw.write("Waiting %2.1f s for move to finish"%waitTime)
             time.sleep(waitTime)
+            self.lw.write("Move finished")
             status = 0
         else:
             print "could not acquire lock (StepperCmd.stepMotor)"
@@ -247,11 +203,6 @@ class stepperCmdEl():
             f2.write("%s %s \n"%(ts,logMsg2))
             f2.close()
            
-    # def updateElPos(self):
-    #     if datetime.datetime.now()-self.lastUpdate > datetime.timedelta(0,1,0):
-    #         if self.debug: print "Elpos is more than 1 sec old. Updating it."
-    #         self.getElPos()
-            
     def monitorElPos(self):
         if self.lock.acquire():
             pos = self.posD
@@ -264,15 +215,14 @@ class stepperCmdEl():
     def getElPos(self):
         if self.lock.acquire():
             try:
-                self.ser.write('ep')
-                pos = self.ser.readline()
-                self.lastUpdate = datetime.datetime.now()
+                self.s.send('e')
+                pos = self.s.readline()
                 if 'EL_POS:' in pos:
                     pos = pos.split('EL_POS:')[1].split('\r')[0].strip()
                     pos = float(pos)
-                    if self.debug: print datetime.datetime.now(), 'Nsteps: ', pos
+                    if self.debug: print datetime.datetime.now(),' Nsteps: ',pos
                     self.posS = pos
-                    self.posD = float(self.step2Angle(pos)) # Ok because we are inside lock.
+                    self.posD = float(self.step2Angle(pos)) 
                     pos = self.posD
             except:
                 pos = -9999.9999

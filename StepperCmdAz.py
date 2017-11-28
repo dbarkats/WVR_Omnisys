@@ -1,85 +1,42 @@
-import serial
-import socket
-import sys
+import Socket as S
 import time
 import datetime
 import threading
 import logWriter
-import scipy.interpolate
+#import scipy.interpolate
 import numpy as np
-from pylab import array, argsort
+#from pylab import array, argsort
 
 class stepperCmdAz():
     """
-    Class to control the elevation axis stepper
+    Class to control the az stepper motor through the az/el arduino
+    Implemented in 2017 when we transitionned to ethernet communication and 
+    also started using our own az rotation stage instead of Newport rotation 
+    stage
+    Previous implementation of azAxis control is in wvrPeriComm.py
+    Uses the homemade Socket.py
     """
     
     def __init__(self, logger=None, debug=True):
-        hostname = socket.gethostname()
-        self.port = '/dev/arduinoElAxisAlt'
-        self.baudrate = 57600
+        hostname = S.socket.gethostname()
+        self.ip = '192.168.168.233' # IP address of az/el arduino
+        self.port = 4321
         self.debug=debug
         self.lock = threading.Lock()
-        self.ser = serial.Serial()
         self.setLogger(logger)
-        #prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        #if logger == None:
-        #    self.lw = logWriter.logWriter(prefix, verbose=False)
-        #else:
-        #    self.lw = logger
-        self.posD = -9999.999
+        # self.step2Angle = 
+        # self.angle2Step
 
+        self.initPort()
         # for reference:
-        spd_deg_per_sec = 12. #nominal observing speed
-        microsteps_per_step = 16. #for the sparkfun motor
+        spd = 12.  # nominal observing speed in deg/s. hardwired in Arduino
+        usteps_per_step = 8. 
         steps_per_motor_rev = 200.
         gear_ratio = 3.
-        microsteps_per_peri_rev = microsteps_per_step * steps_per_motor_rev * gear_ratio
+        usteps_per_peri_rev = usteps_per_step * steps_per_motor_rev * gear_ratio
 
-        #let's say 5000 revolutions in either direction is the max you can run for.  At 12 deg/sec of the periscope, this corresponds to 42h
-
-        stepAz = np.linspace(-5000.*9600., 5000.*9600., 10)
-        angleAz = np.linspace(-5000.*360., 5000.*360., 10)
-
-        
-        #stepPole = array([0.,   100.,   200.,   300.,   400.,
-        #                  500.,   600.,   700.,   800.,   900.,
-        #                  1000.,  1100.,  1200.,  1300.,  1400.,
-        #                  1500.,  1600.,  1700.,  1800.,  1900.,
-        #                  2000.,  2100.,  2200.,  2300.,  2400.,
-        #                  2500.,  2600.,  2700.,  2800., 2900.,
-        #                  3000.,  3100.,  3200.,  3300.,  3400.])
-        #anglePole = array([93.75, 90.45, 87.8, 84.95, 82.15,
-        #                   79.45, 76.85, 74.3, 71.85, 69.4, 67.,
-        #                   64.65, 62.25, 60.05, 57.65, 55.35, 53.15,
-        #                   50.85, 48.55, 46.2, 43.95, 41.7, 39.3, 36.95,
-        #                   34.5, 32.2, 29.6, 27.05, 24.6,
-        #                   21.8, 19.2, 16.55, 13.8, 11.15, 8.94])
-        #stepSummit = array([0.,   100.,   200.,   300.,   400.,
-        #                    500.,   600.,   700.,   800.,   900.,
-        #                    1000.,  1100.,  1200.,  1300.,  1400.,
-        #                    1500.,  1600.,  1700.,  1800.,  1900.,
-        #                    2000.,  2100.,  2200.,  2300.,  2400.,
-        #                    2500.,  2600.,  2700.,  2800., 2900.,
-        #                    3000.,  3100.,  3200.])
-        #angleSummit = array([92.6, 88.85, 85.35, 82.2, 79.15, 76.35,
-        #                     73.7, 70.7, 67.95, 65.25, 62.85, 60.35,
-        #                     57.7, 55.25, 52.65, 50.25, 47.6, 45.2,
-        #                     42.7, 40.15, 37.5, 35.0, 32.5, 29.55, 27.2,
-        #                     24.3, 21.25, 18.5, 15.6, 12.5, 9.45, 6.0,
-        #                     2.65])
-        if 'wvr1' in hostname:
-            angle = angleAz
-            step = stepAz
-        elif 'wvr2' in hostname:
-            angle = angleAz
-            step = stepAz
-        else:
-            angle = angleAz
-            step = stepAz
-        q = argsort(angle)
-        self.step2Angle = scipy.interpolate.interp1d(step,angle,kind='linear')
-        self.angle2Step = scipy.interpolate.interp1d(angle[q],step[q],kind='linear')
+    def step2Angle(self,step):
+        return float(360.*step/4800.)
 
     def setLogger(self,logger=None):
         prefix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -98,31 +55,16 @@ class stepperCmdAz():
 
     def openPort(self):
         """
-        if for some reason the port refuses to open. 2 possible fixes.
-        Close the port, and open it with the Arduino IDE. Then the port will open
-        with normal serial communication.
-        OR with port open, do ser.setXonXoff(True), close port and reopen. Then it should work. If xonxoff was already True, do a False and back to True.
-        This problem happens when the USB port is swapped from one plug to the other
+        
         """
-        timeout = 1 #second
-        count = 0
         if self.lock.acquire():
             try:
-                if not self.ser.isOpen():
-                    if self.debug: print "Opening port: %s"%self.port
-                    self.ser.port = self.port
-                    self.ser.baudrate = self.baudrate
-                    self.ser.open()
-                    while((self.ser.inWaiting() < 0) or (count >= timeout)):
-                        time.sleep(.002)
-                        count = count+0.002
-                        self.lw.write(self.ser.readline())
-                    status = 0
-                else:
-                    if self.debug: print "Serial port is already in use. Close before opening"
-                    status = 1
+                if (self.debug): print "Opening socket ip %s"%self.ip
+                self.s = S.Socket(S.socket.AF_INET, S.socket.SOCK_STREAM)
+                self.s.connect((self.ip,self.port))
+                status = 0
             except:
-                self.lw.write('Cannot open Serial port %s at %d'%(self.port,self.baudrate))
+                self.lw.write('Cannot open socket ip: %s at port %d'%(self.ip,self.port))
                 status = 2
             self.lock.release()
         else:
@@ -133,20 +75,16 @@ class stepperCmdAz():
     def closePort(self):
         if self.lock.acquire():
             try:
-                if (self.debug): print "Closing Port %s"%self.port
-                self.ser.flush()
-                self.ser.close()
+                if (self.debug): print "Closing socket ip %s"%self.ip
+                self.s.close()
             except:
-                if (self.debug): print "%s port is already closed"%self.port
+                if (self.debug): print "%s socket ip is already closed"%self.ip
             self.lock.release()
         else:
             print "could not acquire lock (StepperCmdAz.closePort)"
         
     def home(self):
         self.stepMotor('-9999')
-
-    #def slewMinEl(self):
-    #    self.slewEl(13.8)
 
     def convert_angle2step(self, az):
         if self.lock.acquire():
@@ -168,13 +106,12 @@ class stepperCmdAz():
     
     def slewAz(self, az):
         """
-        Wrapper for stepMotor to allow us to send elevation commands 
-        with elevation angle instead of steps
+       
         """
-        if az < -5000.*360. or az > 5000.*360.:
+        if az < -200.*360. or az > 200.*360.:
             if (self.debug): 
-                print "Requested az is greater than 5000 revolutions, doing nothing"
-                self.lw.write('Requested az is greater than 5000 revolutions ')
+                print "Requested az is greater than 200 revolutions, doing nothing"
+                self.lw.write('Requested az is greater than 200 revolutions ')
         else:
             steps = self.convert_angle2step(az)
             if steps is not None:
@@ -193,25 +130,15 @@ class stepperCmdAz():
             self.lw.write("Nsteps must be a string 'xxx' where xxx is integer")
             return 1
 
-        if int(Nsteps) > 5000.*9600 or int(Nsteps) < -5000.*9600.:
+        if int(Nsteps) > 200.*4800 or int(Nsteps) < -200.*4800.:
             if int(Nsteps) != -9999:
-                self.lw.write("Nsteps must be between -48000000 and 48000000 steps. Review things")
+                self.lw.write("Nsteps must be between -960 000 and 960 000 steps. Review things")
                 return 1
 
         posD = self.getAzPos()
         if self.lock.acquire():
-            if Nsteps != '-9999':
-                dist = abs(int(Nsteps)-self.posS)
-                if self.debug: print self.posS, Nsteps, dist
-                waitTime = min(dist/220.,15.0)
-            else:
-                waitTime = 15.0
-        
-            if not self.ser.isOpen():
-                self.openPort()
             # send command
-            self.ser.write('a'+Nsteps) #the a is necessary to specify the az motor
-            #self.ser.write(Nsteps)
+            self.s.send('a'+Nsteps)
             self.lock.release()
             if int(Nsteps) == -9999:
                 logMsg = 'Computer commanded Arduino to home'
@@ -219,54 +146,12 @@ class stepperCmdAz():
                 logMsg = 'Computer commanded Arduino to move to %s steps'%Nsteps
             self.lw.write(logMsg)
 
-            ## check that the response matches with what we sent
-            #while(self.ser.inWaiting() < 0):
-            #    time.sleep(0.1)
-            #ret = self.ser.readline()
-            #if (ret.split()[0] == 'Moving') and (ret.split()[2] == Nsteps):
-            #    logMsg = 'Arduino confirmed stepper moving to %s steps'%Nsteps
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #    
-            #elif (ret.split()[0] == 'Homing'):
-            #    logMsg = 'Arduino confirmed stepper is homing to steps = 0'
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #elif (ret.split()[0] == 'You'):
-            #    logMsg = 'You hit the limit switch and rehomed, current position 0'
-            #    print logMsg
-            #    self.logStepper(logMsg,logMsg)
-            #else:
-            #    print "WARNING,WARNING,WARNING"
-            #    print "Response does not match what we expect. What to do"
-            #    print "Expected %s steps, got %s steps"%(Nsteps, ret)
-    
-            self.lw.write("Waiting %2.1f s for move to finish"%waitTime)
-            time.sleep(waitTime)
             status = 0
         else:
-            print "could not acquire lock (StepperCmd.stepMotor)"
+            print "could not acquire lock (StepperCmdAz.stepMotor)"
             status = 2
         return status
 
-    def logStepper(self,logMsg1,logMsg2=''):
-        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S.%f')
-        # log to a continuous file
-        f1 = open('/home/dbarkats/logs/allStepperCommands.txt','aw')
-        f1.write('%s %s\n'%(ts,logMsg1))
-        f1.close()
-
-        # log to a lastCommand file
-        if logMsg2 != '':
-            f2 = open('/home/dbarkats/logs/lastStepperCommand.txt','w')
-            f2.write("%s %s \n"%(ts,logMsg2))
-            f2.close()
-           
-    # def updateElPos(self):
-    #     if datetime.datetime.now()-self.lastUpdate > datetime.timedelta(0,1,0):
-    #         if self.debug: print "Elpos is more than 1 sec old. Updating it."
-    #         self.getElPos()
-            
     def monitorAzPos(self):
         if self.lock.acquire():
             pos = self.posD
@@ -278,23 +163,23 @@ class stepperCmdAz():
 
     def getAzPos(self):
         if self.lock.acquire():
-            try:
-                self.ser.write('ap')
-                pos = self.ser.readline()
-                self.lastUpdate = datetime.datetime.now()
+            if(1):
+                self.s.send('a')
+                pos = self.s.readline()
+                #self.lastUpdate = datetime.datetime.now()
                 if 'AZ_POS:' in pos:
                     pos = pos.split('AZ_POS:')[1].split('\r')[0].strip()
-                    pos = float(pos)
+                    pos = int(pos)
                     if self.debug: print datetime.datetime.now(), 'Nsteps: ', pos
                     self.posS = pos
-                    self.posD = float(self.step2Angle(pos)) # Ok because we are inside lock.
+                    self.posD = self.step2Angle(pos)
                     pos = self.posD
-            except:
+            else:
                 pos = -9999.9999
                 self.posD = pos
                 self.posS = pos
             self.lock.release()
         else:
-            print "could not acquire lock (StepperCmd.getAzPos)"
+            print "could not acquire lock (StepperCmdAz.getAzPos)"
             pos = -9999.9999
         return pos
