@@ -7,6 +7,4 @@ SHELL=/bin/bash
 #00 * * * *   nice -n -19 $HOME/wvr_pipeline/wvrNoise.py -w  &>> $HOME/wvr_data/wvrLog.txt
 10 * * * *   $HOME/wvr_pipeline/wvrArchiveData.py
 00 01 * * *  $HOME/wvr_pipeline/NOAA_SFTP_client.py  &>> $HOME/wvr_data/wvrLog.txt
-#
-# outside Temperature recording only
-#00 * * * * $HOME/wvr_pipeline/MonitorPIDTemps.py -d 3500 &>> $HOME/wvr_data/wvrLog.txt
+

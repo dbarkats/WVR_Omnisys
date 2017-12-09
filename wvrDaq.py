@@ -4,21 +4,20 @@ import time
 import datetime
 import numpy as np
 import wvrComm
-import wvrPeriComm
-import StepperCmd
+import StepperCmdAzEl
 import MCpoints
 import traceback
 import logWriter
 
 # Update this if you make major changes to code.
-VERSION = 'version 2016-05-27'
+VERSION = 'version 2017-12-05'
 
 class wvrDaq():
     """
     Class for WVR data acquisition
     """
 
-    def __init__(self, logger=None, wvr=None, peri=None, elstep=None,
+    def __init__(self, logger=None, wvr=None, azelstep=None,
                  chan=[0,1,2,3], reg_fast=[], reg_slow=['HOT_TEMP','COLD_TEMP'], 
                  reg_stat=['STATE','ALARMS'], cadence=0.001, slowfactor=20,
                  comments='', prefix = '', debug=True):
@@ -26,8 +25,7 @@ class wvrDaq():
         self.setPrefix(prefix=prefix)
         self.setLogger(logger=logger)
         self.wvr = wvr
-        self.peri = peri
-        self.wvrEl = elstep
+        self.wvrAE = azelstep
         self.chan = chan
         self.reg_fast = self.setReg(reg_fast)
         self.reg_slow = self.setReg(reg_slow)
@@ -196,8 +194,8 @@ class wvrDaq():
         reg_dict['LNA_TEMP'] = (self.wvr.getLnaTemp, None, None, ('LNA_TEMP',))
 
         # AZ and EL -- only use for slow/stat file (az/el already included in fast file)
-        reg_dict['AZ'] = (self.peri.monitorAzPos, None, None, ('AZ',))
-        reg_dict['EL'] = (self.wvrEl.monitorElPos, None, None, ('EL',))
+        reg_dict['AZ'] = (self.wvrAE.monitorAzPos, None, None, ('AZ',))
+        reg_dict['EL'] = (self.wvrAE.monitorElPos, None, None, ('EL',))
 
         # Generate list of function handles.
         reg = []
@@ -314,11 +312,12 @@ class wvrDaq():
                 # Acquire WVR data for all channels.
                 (tcurr, dvec) = self.acquireFastSample()
                 # Read encoder position.
-                az = self.peri.getAzPos()
-                el = self.wvrEl.getElPos()
+                #az = self.wvrAE.getAzPos()
+                #el = self.wvrAE.getElPos()
+                az,el = self.wvrAE.getBothPos()
                 
                 # Read fast registers.
-                #fastvec = self.acquireHk(self.reg_fast)
+                # fastvec = self.acquireHk(self.reg_fast)
                 # Combine into string.
                 faststr = '{} {}'.format(tstr, tcurr)
                 faststr = faststr + (' {}' * len(dvec)).format(*dvec)
@@ -358,10 +357,9 @@ class wvrDaq():
         # Acquire WVR data for all channels.
         (tcurr, dvec) = self.acquireFastSample()
         # Read encoder position.
-        az = self.peri.getAzPos()
+        az = self.wvrAE.getAzPos()
         #az = -9999.99
-        
-        el = self.wvrEl.getElPos()
+        el = self.wvrAE.getElPos()
         #el = -9999.99
 
         # Acquire housekeeping data.

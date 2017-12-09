@@ -3,6 +3,7 @@ from pylab import *
 
 import analysisUtils as au
 from initialize import initialize
+from datetime import datetime, timedelta
 
 class wvrReadData(initialize):
     
@@ -13,9 +14,9 @@ class wvrReadData(initialize):
         initialize.__init__(self, unit)
 
     def readPIDTempsFile(self, fileList, verb=True):
-
-        fileList = au.aggregate(fileList)
         
+
+        fileList = au.aggregate(fileList)        
         fl=[]
         for f in fileList:
             fl.append(f.replace('.tar.gz','_PIDTemps.txt'))
@@ -46,9 +47,9 @@ class wvrReadData(initialize):
         utTime = []
         for tstr in d['f0']:
             #try:
-            utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+            utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
             #except:
-            #    utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+            #    utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
         sample=arange(size(d))  # was 'f1'
         t0=d['f2']
         input=d['f3']
@@ -112,14 +113,14 @@ class wvrReadData(initialize):
         azfast = d['AZ']
         utfast = []
         for tstr in d['TIME']:
-            utfast.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+            utfast.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
         utfast = array(utfast)
         return utfast,tfast,azfast,elfast,d
  
      
     def readSlowFile(self, fileList,verb=True):
         
-        fileList = au.aggregate(fileList)
+        fileList = au.aggregate(fileList) 
         fl=[]
         for f in fileList:
             fl.append(f.replace('.tar.gz','_slow.txt'))
@@ -144,9 +145,9 @@ class wvrReadData(initialize):
         for tstr in d['TIME']:
             # try/except to deal with early season change of format
             try:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+                utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
             except:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
+                utTime.append(datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
 
         tslow = d['TIMEWVR']
         if 'AZ' in keys:
@@ -177,7 +178,7 @@ class wvrReadData(initialize):
         utTime = []
         for filename in fl:
             tstr = '%sT%s'%(filename.split('_')[0],filename.split('_')[1])
-            utTime.append(datetime.datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
+            utTime.append(datetime.strptime(tstr,'%Y%m%dT%H%M%S'))
             if not(os.path.isfile(self.dataDir+filename)):
                 print "WARNING: Skipping %s: File missing"%filename
                 d.append((nan,nan,nan,nan))
@@ -220,18 +221,18 @@ class wvrReadData(initialize):
         for tstr in d['TIME']:
             # try/except to deal with early season change of format
             try:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+                utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
             except:
-                utTime.append(datetime.datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
+                utTime.append(datetime.strptime(tstr,'%Y-%m-%d:%H:%M:%S.%f'))
 
         return (utTime,d)
    
     def readWxFile(self,fileList, type='NOAA',verb=True):
         """
         Given a list of files, this will read all of them, 
-        and produce a concatenated output 
-        ready to be plotted.
+        and produce a concatenated output ready to be plotted.
         """
+        
         fileList = au.aggregate(fileList)
         if size(fileList) == 0:
             print "No Wx data during that time range"
@@ -240,6 +241,9 @@ class wvrReadData(initialize):
         fl=[]
         for f in fileList:
             ymd = f.split('_')[0]
+            day =  datetime.strptime(ymd,'%Y%m%d')
+            fmtchg1 = datetime.strptime('20171205','%Y%m%d')
+            print day, fmtchg1
             hms = f.split('_')[1]
             if self.unit == 'wvr1':
                 ext = 'Spo'
@@ -251,17 +255,21 @@ class wvrReadData(initialize):
         
         wx=[]
         for filename in fl:
-            filename = self.dataDir+filename
-            if (verb): print "Reading %s"%filename
+            fn = self.dataDir+filename
+            if (verb): print "Reading %s"%fn
             if (type=='NOAA'):
-                if os.path.isfile(filename):
+                if os.path.isfile(fn):
                     if self.unit == 'wvr2':
-                        e = genfromtxt(filename,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
+                        e = genfromtxt(fn,dtype="S26,f,f,f,f,f,f",names = ['ut','wsms','wddeg','wsmsGust','presMb','tempC','dewC'], delimiter=',', invalid_raise = False)
                     elif self.unit == 'wvr1':
-                        e = genfromtxt(filename,dtype="S26,i,S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",names = ['ut','sample','station','wsms','wddeg','wsmsGust','wsms10','wddeg10','wsmsGust10','wsms27','wddeg27','wsmsGust27','presMb','dewC','tempC','tempC10','tempC27','logT','batV'], delimiter=',', invalid_raise = False)
-                        e = au.rmfield(e,'station')
+                        if day < fmtchg1:
+                            e = genfromtxt(fn,dtype="S26,i,S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",names = ['ut','samp','station','wsms','wddeg','wsmsGust','wsms10','wddeg10','wsmsGust10','wsms27','wddeg27','wsmsGust27','presMb','dewC','tempC','tempC10','tempC27','logT','batV'], delimiter=',', invalid_raise = False)
+                            e = au.rmfield(e,'station')
+                        else:
+                            e = genfromtxt(fn,dtype="S26,i,S26,f,f,f,f,f,f,f,f",names = ['ut','samp','station','wsms','wddeg','wsmsGust','presMb','dewC','tempC','logT','batV'], delimiter=',', invalid_raise = False)
+                            e = au.rmfield(e,'station')
                 else:
-                    print "WARNING: %s file missing. skipping... "%filename
+                    print "WARNING: %s file missing. skipping... "%fn
                     continue
             else:
                 e = genfromtxt(self.wxDir+filename, delimiter='',names=True, invalid_raise = False)
@@ -274,11 +282,11 @@ class wvrReadData(initialize):
         utTime = []
         if (type=='NOAA'):
             for ut in wx['ut']:
-                utTime.append(datetime.datetime.strptime(ut,'"%Y-%m-%d %H:%M:%S"'))
+                utTime.append(datetime.strptime(ut,'"%Y-%m-%d %H:%M:%S"'))
         else:
             for mjd in wx['mjd']:
                 ut = au.mjdToUT(mjd)
-                utTime.append(datetime.datetime.strptime(ut,'%Y-%m-%d %H:%M:%S UT'))
+                utTime.append(datetime.strptime(ut,'%Y-%m-%d %H:%M:%S UT'))
 
         #### add Rh to wx array if not present
         if 'dewC' in wx.dtype.fields:
@@ -292,14 +300,14 @@ class wvrReadData(initialize):
 
     def readSPWxData(self, date='', time='',shrink = 0, verbose=True,):
         """
-        Instead of reading B2/ Keck Wx data, reads minutely spo met data. 
+        Instead of reading B2/Keck Wx data, reads minutely spo met data. 
         Downloaded from:
         # ftp://aftp.cmdl.noaa.gov/data/meteorology/in-situ/spo/2015/met_spo_insitu_1_obop_minute_2015_12.txt;
         for a given date/time string time should be in 1 hour increment
         shrink [hrs] is number of hours before and after we want to select. if zero provides the whole month file
 
         """
-        dat=datetime.datetime.strptime('%s %s'%(date,time),'%Y%m%d %H%M%S')
+        dat=datetime.strptime('%s %s'%(date,time),'%Y%m%d %H%M%S')
         print dat
         year = date[0:4]
         month = date[4:6]
@@ -307,7 +315,7 @@ class wvrReadData(initialize):
 
         if verbose: print "Reading %s"%wxFile
         d = genfromtxt(self.dataDir+wxFile,delimiter='',dtype='S,i,i,i,i,i,i,f,i,f,f,f,f,f,f')
-        dt = array([datetime.datetime(t[1],t[2],t[3],t[4],t[5]) for t in d])
+        dt = array([datetime(t[1],t[2],t[3],t[4],t[5]) for t in d])
         wx ={'time': dt, 'presmB':d['f9'],'tempC': d['f11'],'rh':d['f13'],'wsms':d['f7'],'wddeg':d['f6']}
 
         # exclude junk data
@@ -321,7 +329,7 @@ class wvrReadData(initialize):
             nrows = size(wx['time'])
             q = find(wx['time'] == dat)
             while(size(q) == 0):
-                dat=dat+datetime.timedelta(seconds=60)
+                dat=dat+timedelta(seconds=60)
                 q = find(wx['time'] == dat)
             for k in wx.keys():
                 wx[k]=wx[k][max(q-60,0):min(q+60,nrows)]
