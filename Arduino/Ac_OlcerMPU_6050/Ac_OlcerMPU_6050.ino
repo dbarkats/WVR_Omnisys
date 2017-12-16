@@ -7,7 +7,7 @@
 const int MPU_addr = 0x68;
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
 
-// connect  Vcc (5V), GND, SDA, SCL, INT ( to pin2 digital) and AD0 to GND)
+// connect  Vcc (5V), GND, SDA, SCL, INT (to pin2 digital) and AD0 to GND)
 
 //int minVal=265;
 //int maxVal=402;
@@ -67,6 +67,12 @@ void loop() {
   sY = smooth(y, 0.9, sY);
   sZ = smooth(z, 0.9, sZ);
 
+  SerialUSB.print(AcX, 3);
+  SerialUSB.print("\t");
+  SerialUSB.print(AcY, 3);
+  SerialUSB.print("\t");
+  SerialUSB.print(AcZ, 3);
+  SerialUSB.print("\t");
   SerialUSB.print(x, 3);
   SerialUSB.print("\t");
   SerialUSB.print(y, 3);
@@ -82,7 +88,7 @@ void loop() {
   SerialUSB.print(sZ, 1);
   SerialUSB.print("\t");
   SerialUSB.println("\t");
-  delay(10);
+  delay(1000);
 }
 
 float smooth(float data, float filterVal, float smoothedVal) {

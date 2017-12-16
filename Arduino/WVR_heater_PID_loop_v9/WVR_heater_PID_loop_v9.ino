@@ -96,7 +96,7 @@ void setup() {
   Wire.endTransmission(true);
  
   // initialize serial communication at 9600 bits per second:
-  SerialUSB.begin(9600);
+  Serial.begin(9600);
   // while(!SerialUSB.available());
 
   //initialize the variables we're using
@@ -133,9 +133,11 @@ void loop() {
   // read the input on analog pin 0 through 11;
   analogRead(therm0);
   delay(1);
-  float temp0 =  analogRead(therm0) * 3.3 / 4095.0 * 100.0;// LM35
-  float temp1 =  analogRead(therm1) * 3.3 / 4095.0 * 100.0;// LM35
-  float temp2 =  analogRead(therm2) * 3.3 / 4095.0 * 100.0;// LM35
+  float temp0 =  analogRead(therm0) * 3.3 / 4095.0;// * 100.0;// LM35
+  //float temp0 =  analogRead(therm0) * 5.0 / 1023.0;// * 100.0;// LM35
+
+  float temp1 =  analogRead(therm1) * 3.3 / 4095.0;// * 100.0;// LM35
+  float temp2 =  analogRead(therm2) * 3.3 / 4095.0;// * 100.0;// LM35
   float temp3 =  analogRead(therm3) * 3.3 / 4095.0 * 100.0;// LM35
   float temp4 =  analogRead(therm4) * 3.3 / 4095.0 * 100.0;// LM35
   float temp5 =  analogRead(therm5) * 3.3 / 4095.0 * 100.0;// LM35
@@ -216,6 +218,7 @@ void loop() {
     y = y -360.0;
   
   // print out the value you read:
+  
   SerialUSB.print(counter);
   SerialUSB.print("\t");
   SerialUSB.print(temp0, 3);
@@ -261,6 +264,54 @@ void loop() {
   SerialUSB.print(z,3);
   SerialUSB.print("\t");
   SerialUSB.println(Tmp/340.00+36.53,3);
+  
+  /*
+  // print out the value you read:
+  Serial.print(counter);
+  Serial.print("\t");
+  Serial.print(temp0, 3);
+  Serial.print("\t");
+  Serial.print(Input, 3);
+  Serial.print("\t");
+  Serial.print(temp1, 3);
+  Serial.print("\t");
+  Serial.print(temp2, 3);
+  Serial.print("\t");
+  Serial.print(temp3, 3);
+  Serial.print("\t");
+  Serial.print(temp4, 3);
+  Serial.print("\t");
+  Serial.print(temp5, 3);
+  Serial.print("\t");
+  Serial.print(temp6, 3);
+  Serial.print("\t");
+  Serial.print(temp7, 3);
+  Serial.print("\t");
+  Serial.print(temp8, 3);
+  Serial.print("\t");
+  Serial.print(smoothedAzTemp, 3);
+  Serial.print("\t");
+  Serial.print(temp10, 3);
+  Serial.print("\t");
+  Serial.print(smoothedAzCurrent, 3);
+  Serial.print("\t");
+  Serial.print(Output, 3);
+  Serial.print("\t");
+  Serial.print(stateRelayIn);
+  Serial.print("\t");
+  Serial.print(stateRelayOut);
+  Serial.print("\t");
+  Serial.print(stateRelayAzStage);
+  Serial.print("\t");
+  Serial.print(OutputAz);
+  Serial.print("\t");
+  Serial.print(x,3);
+  Serial.print("\t");
+  Serial.print(y,3);
+  Serial.print("\t");
+  Serial.print(z,3);
+  Serial.print("\t");
+  Serial.println(Tmp/340.00+36.53,3);*/
   delay(1000);        // delay in between reads for stability
 }
 

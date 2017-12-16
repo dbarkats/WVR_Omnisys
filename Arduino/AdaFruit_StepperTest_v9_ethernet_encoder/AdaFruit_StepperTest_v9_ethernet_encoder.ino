@@ -14,6 +14,16 @@
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 #include <Ethernet2.h>
 
+// Define pins for encoder readout
+enum PinAssignments {
+  encoderPinA = 2,
+  encoderPinB = 3,
+  clearButton = 4
+};
+volatile long encoderPosAz = 0;
+boolean A_set = false;
+boolean B_set = false;
+
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
@@ -84,9 +94,32 @@ void setup() {
   stepperel.setAcceleration(600);   
 
   pinMode(limswitchPin, INPUT);  // initialize the El limitswitch pin as INPUT
+
+  // Initialize 3 encoder pins as inputs with pullup resistor
+  pinMode(encoderPinA, INPUT);  
+  pinMode(encoderPinB, INPUT);
+  pinMode(clearButton, INPUT);
+  digitalWrite(encoderPinA, HIGH);  // turn on pullup resistor
+  digitalWrite(encoderPinB, HIGH);  // turn on pullup resistor
+  digitalWrite(clearButton, HIGH);
+
+  // encoder pin on interrupt 0 (pin 5)
+  attachInterrupt(0, doEncoderA, CHANGE);
+  // encoder pin on interrupt 1 (pin 6)
+  attachInterrupt(1, doEncoderB, CHANGE);
 }
 
 void loop() {
+/*
+  if (Serial.available() > 0) {
+      Serial.read();
+      Serial.println(encoderPosAz);
+  }
+  
+  if (digitalRead(clearButton) == HIGH)  {
+    encoderPosAz = 0;
+  }
+*/
 
   limswitchState = digitalRead(limswitchPin);
   /*  // Set LED to read the state of the limit switch. for debugging only
@@ -109,7 +142,7 @@ void loop() {
       
       if (steps == 0) {                       // if nonnumeric input
         server.print("AZ_POS: ");
-        server.println(stepperaz.currentPosition());        
+        server.println(stepperaz.currentPosition());
       }
       else {
         if (steps == -9999) {                 // -9999 is the command to home
@@ -128,7 +161,7 @@ void loop() {
             }
             if (counter > 1000) {
              // stepperaz.stop();
-              //stepperaz.runToPosition();
+             //stepperaz.runToPosition();
               break;
             }
             // Serial.println(counter);  for debugging only
@@ -142,8 +175,8 @@ void loop() {
     else if (whichMotor == "e") {       // if el motor
 
       if (steps == 0) {                 // if non numeric input
-        server.print("EL_POS: ");
-        server.println(stepperel.currentPosition());
+        server.print ("EL_POS: ");
+        server.println (stepperel.currentPosition());
       }
       else {
         if (steps == -9999) {      // home
@@ -200,20 +233,49 @@ void ReturnPos()  {
     String  Input = client.readString();         // read the whole string
     //String whichMotor = Input.substring(0, 1); // grab first character.
     char whichMotor = Input.c_str()[0];
-    //if (whichMotor == "a") {
     if (whichMotor == 'a') {
       server.print("AZ_POS: ") ;
-      server.println(stepperaz.currentPosition());
+      server.print(stepperaz.currentPosition());
     }
-    //else if (whichMotor == "e") {
     else if (whichMotor == 'e') {
       server.print("EL_POS: ") ;
       server.println(stepperel.currentPosition());
     }
-    //else if (whichMotor == "o") {
     else if (whichMotor == 'o') {
       server.print("AZ_POS: ");
       server.print(stepperaz.currentPosition());
+      server.print(", ");
+      server.print("EL_POS: ") ;
+      server.println(stepperel.currentPosition());
+    }
+    else if (whichMotor == 'b') {       // if az motor stop
+           stepperaz.stop();
+    }
+  }
+}
+
+
+void ReturnPos2()  {
+  // Returns the encoder position instead of the  stepper position
+  EthernetClient client = server.available();
+  client.setTimeout(0);
+
+  if (client) {
+    String  Input = client.readString();         // read the whole string
+    //String whichMotor = Input.substring(0, 1); // grab first character.
+    char whichMotor = Input.c_str()[0];
+    //if (whichMotor == "a") {
+    if (whichMotor == 'a') {
+      server.print("AZ_POS: ") ;
+      server.println(encoderPosAz);
+    }
+    else if (whichMotor == 'e') {
+      server.print("EL_POS: ") ;
+      server.println(stepperel.currentPosition());
+    }
+    else if (whichMotor == 'o') {
+      server.print("AZ_POS: ");
+      server.println(encoderPosAz);
       server.print(", ");
       server.print("EL_POS: ") ;
       server.println(stepperel.currentPosition());
@@ -250,11 +312,32 @@ void elHome() {
   stepperel.setCurrentPosition(0);
 }
 
+void azHome2(){
+  // alternative method of homing using the encoder.
+  // Does not work because it homes on motor zero not bearing  zero
+  long currentPos = stepperaz.currentPosition();
+  stepperaz.moveTo(currentPos+7200);//Do 1.5 turns
+  int aztrig = 1;
+  
+  while(aztrig) {
+
+    if(digitalRead(clearButton) == HIGH){
+      aztrig = 0; 
+    }
+    stepperaz.run();
+    ReturnPos();
+  }
+  myStepperAz->release();
+  stepperaz.setCurrentPosition(0);
+  encoderPosAz = 0;  
+}
+
 void azHome() {
   // primary method of homing
   // works using bearing optosensor
-  // zeros  the stepper position 
+  // zeros both the  stepper position and the encoder position
   // has a breaking point if stepper gets stuck
+  
   long currentPos = stepperaz.currentPosition();
   stepperaz.moveTo(currentPos+7200);//Do 1.5 turns
   
@@ -282,4 +365,23 @@ void azHome() {
   }
   myStepperAz->release();
   stepperaz.setCurrentPosition(0);
+  encoderPosAz = 0;
 }
+
+// Interrupt on A changing state
+void doEncoderA() {
+  // Test transition
+  A_set = digitalRead(encoderPinA) == HIGH;
+  // and adjust counter + if A leads B
+  encoderPosAz += (A_set != B_set) ? -1 : +1;
+}
+
+// Interrupt on B changing state
+void doEncoderB() {
+  // Test transition
+  B_set = digitalRead(encoderPinB) == HIGH;
+  // and adjust counter + if B follows A
+  encoderPosAz += (A_set == B_set) ? -1 : +1;
+}
+
+
