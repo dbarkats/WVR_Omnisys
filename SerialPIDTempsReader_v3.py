@@ -257,6 +257,7 @@ class SerialPIDTempsReader():
         self.initVar()
         self.openFile()
         self.flushPort() #remove all previous data on socket
+        self.s.readline()
 
         elapsed_seconds = 0
         while(elapsed_seconds < Niter):

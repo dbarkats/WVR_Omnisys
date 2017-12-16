@@ -118,6 +118,8 @@ lw.write("create wvrAzEl object")
 wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
 
 if not(options.skipAzScan):
+    wvrAE.stopAzRot()
+    time.sleep(1)
     lw.write("Homing Az stage")
     wvrAE.homeAz()
     #lw.write("Slewing to az=%3.1f"%skyDipAz)
@@ -193,16 +195,16 @@ time.sleep(1)
 
 if not(options.skipAzScan):
     lw.write("start az rotation.")
-    lw.write("Doing %d turns at 12deg/s: %d seconds"%(NazTurns,azScanningDuration))
+    lw.write("Doing %d turns, %d deg at 12deg/s: %d seconds"%(NazTurns,Nazturns*360.,azScanningDuration))
     wvrAE.setLogger(lw)
     wvrAE.slewAz(NazTurns*360.)
 
 lw.write("start wvr data acquisition in the foreground")
 (nfast, nslow) = daq.recordData(azScanningDuration)
+lw.write("end of wvr data acquisition in the foreground")
 
 # Clean up.
-wvrAE.stopAzRot()
-wvrAE.closePort()
+#wvrAE.closePort()
 lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')
