@@ -255,7 +255,7 @@ class stepperCmd():
 
     def homeAz(self):
         self.lw.write("Homing Az stepper motor")
-        WaitTime = 110
+        WaitTime = 40
         self.lw.write("Az homing move: Waiting Max %2.0fs for move to finish"%WaitTime)
         timeCount = 0
         azPos0 = self.getAzPos()
