@@ -54,8 +54,8 @@ AccelStepper stepperaz(forwardstepaz, backwardstepaz); // use functions to step
 AccelStepper stepperel(forwardstepel, backwardstepel); // use functions to step
 
 // Set up speed for whole observations except homing which is always 182
-//const int spd = 182;   //speed for normal scanAz scanning ~12deg/s
-const int spd = 50;   // beam mapping speed = ~3.5deg/s
+const int spd = 182;   //speed for normal scanAz scanning ~12deg/s
+//const int spd = 50;   // beam mapping speed = ~3.5deg/s
 
 //  Ethernet shield settings
 const int port = 4321;
@@ -64,12 +64,12 @@ byte mac[] = {0x90, 0xA2, 0xDA, 0x10, 0xDD, 0xCD};
 EthernetServer server = EthernetServer(port);
 
 void setup() {
-  /*
+  
     Serial.begin(57600);           // set up Serial library at 57600 
     Serial.flush();
     Serial.setTimeout(5); // 5ms
     Serial.println("Stepper Motion ready!");
-    */
+    
     
   Ethernet.begin(mac, ip);
   server.begin();
@@ -275,12 +275,14 @@ void azHome() {
     optsen = analogRead(optsenPin);
 
     //triggered by a rising edge. Works using absolute values
-    if(optsen >= 650 && optsen_prev < 650){
+    if(optsen >= 650 && optsen_prev <= 650)
+    //if(optsen >= 650 && optsen_prev <= 650 && optsen > optsen_prev)
+    {
       aztrig = 0; 
     }
     optsen_prev = optsen;
     stepperaz.run();
-    //Serial.println(optsen);   //for debugging only 
+    Serial.println(optsen);   //for debugging only 
     ReturnPos();
     
     //break out of the while loop if the trigger is never hit

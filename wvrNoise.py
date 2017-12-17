@@ -99,14 +99,12 @@ lw.write("create wvrAzEl object")
 wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
 
 if wvrOnly:
-    lw.write("Homing Az stepper motor")
     wvrAE.stopAzRot()
     time.sleep(1)
     wvrAE.homeAz()
 
-    lw.write("Homing El stepper motor")
     wvrAE.homeEl()
-    wvrEl.slewEl(El)
+    wvrAE.slewEl(El)
 
 lw.write("Create wvrDaq object")
 daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, azelstep=wvrAE, 
