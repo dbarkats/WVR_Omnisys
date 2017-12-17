@@ -28,15 +28,15 @@ from initialize import initialize
 
 class reduc_wvr_pager(initialize):
 
-    def __init__(self, unit=None):
+    def __init__(self, unit=None, verb=True):
         '''
         '''
 
-        initialize.__init__(self, unit)
+        initialize.__init__(self, unit, verb=verb)
 
-        self.wvrP = wvrPlot.wvrPlot(self.unit)
-        self.wvrS = wvrScience.wvrScience(self.unit)
-        self.wvrR = wvrReadData.wvrReadData(self.unit)
+        self.wvrP = wvrPlot.wvrPlot(self.unit, verb=verb)
+        self.wvrS = wvrScience.wvrScience(self.unit, verb=verb)
+        self.wvrR = wvrReadData.wvrReadData(self.unit, verb=verb)
 
     def getcutFileList(self):
         #print "loading cutFile list..."
@@ -471,12 +471,13 @@ class reduc_wvr_pager(initialize):
         
         fl = self.makeFileListFromData(start=start)
         utTime, sample, wx, temps, input, output, tilt = self.wvrR.readPIDTempsFile(fl,verb=verb)
-
+        
+        
         print ''
         print '#############################################'
         try:
             print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
-            print "Inside WVR air Temp (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(input),median(input),max(input),std(input))
+            print "Inside WVR air Temp (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(input),median(input),max(input),std(input.tolist()))
             print "Outside NOAA Temp   (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
             print "Main heater Output  (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [0-4095]"%(min(output[:,0]),median(output[:,0]),max(output[:,0]),std(output[:,0]))
             print "Az stage Temp       (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
