@@ -260,6 +260,11 @@ class reduc_wvr_pager(initialize):
                 os.system(cmd)
         os.chdir(cwd)
 
+    def passfailmsg(self, msg, passfail, width=40):
+        if type(passfail) == bool:
+            passfail = "PASS" if passfail else "FAIL"
+        print msg.rjust(width), ":", passfail
+
     def checkAzSkips(self, verb=True):
         nowm1hr = (datetime.now()-timedelta(minutes=60)).strftime('%Y%m%d_%H*')
         cwd = os.getcwd()
@@ -277,12 +282,9 @@ class reduc_wvr_pager(initialize):
             idx = -1
         else:
             idx = -2
-        if (dA[idx] == 0):
-            print "AzSkipCheck: deltaAz:%.1f, %s: PASS"%(dA[-2],lastFile)
-        elif ((dA[idx] >359) and (dA[idx] < 361)):
-            print "AzSkipCheck: deltaAz:%.1f, %s: PASS"%(dA[-2],lastFile)
-        else:
-            print "AzSkipCheck: deltaAz:%.1f, %s: FAIL"%(dA[-2],lastFile)
+        passfail = (dA[idx] == 0) or ((dA[idx] > 359) and (dA[idx] < 361))
+        print "AzSkipCheck: deltaAz:%.1fdeg, File: %s" % (dA[idx], lastFile)
+        self.passfailmsg("AzSkipCheck", passfail)
         os.chdir(cwd)
 
     def getDevicesIP(self,verb=True):
@@ -294,11 +296,7 @@ class reduc_wvr_pager(initialize):
             p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
             aout,aerr = p.communicate()
             if (verb): print aout, aerr, "Return code: %d"%p.returncode
-            if p.returncode == 0:
-                print "%19s IP:%10s: PASS"%(name, ip)
-            else:
-                print "%19s IP:%10s: FAIL"%(name, ip)
-       
+            self.passfailmsg("%s IP:%s" % (name, ip), p.returncode == 0)
 
     def getDevices(self, verb=True):
         """
@@ -310,28 +308,15 @@ class reduc_wvr_pager(initialize):
         aout,aerr = p.communicate()
         if (verb): print aout,aerr
         b = aout.split('\n')
-        if '/dev/arduinoPidTemp' in b:
-            print "arduinoPidTemp: PRESENT"
-            count = count+1
-        else:
-            print "arduinoPidTemp: MISSING"
-        if '/dev/arduinoElAxis' in b:
-            print "arduinoElAxis: PRESENT"
-            count = count+1
-        else:
-            print "arduinoElAxis: MISSING"
-        if '/dev/newportAzAxis' in b:
-            print "arduinoAzAxis: PRESENT"
-            count = count+1
-        else:
-             print "arduinoAzAxis: MISSING"
-        if count == 3:
-            print "DeviceCheck: PASS"
-            return 1
-        else:
-            print "DeviceCheck: FAIL"
-            return 0
-            
+
+        for dev in ["arduinoPidTemp", "arduinoElAxis", "newportAzAxis"]:
+            r = "/dev/"+dev in b
+            count += int(r)
+            self.passfailmsg(dev, "PRESENT" if r else "MISSING")
+
+        self.passfailmsg("DeviceCheck", count==3)
+        return int(count==3)
+
     def getNtpStat(self,verb=True):
         """
         return the result of ntpstat
@@ -356,15 +341,11 @@ class reduc_wvr_pager(initialize):
                     offset = float(sline[8])
                     break
 
-        if (offset < 100):
-            print "ntpstat: PASS"
-            return 1
-        else:
-            print "ntpstat: FAIL"
-            return 0
+        self.passfailmsg("nptstat", offset < 100)
+        return int(offset < 100)
+
 
     def getCrontabStatus(self,verb=True):
-
         """
         return the result of crontab -l
 
@@ -373,13 +354,10 @@ class reduc_wvr_pager(initialize):
         p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
         aout,aerr = p.communicate()
         if (verb): print aout.split('\n'),aerr.split('\n')
-        
-        if aout == '':
-            print "crontab status: FAIL"
-            return 0
-        else:
-            print "crontab status: PASS"
-            return 1
+
+        self.passfailmsg("crontab status", aout != "")
+        return int(aout != "")
+
 
     def checkCurrentFileStatus(self):
         todaystr = datetime.now().strftime('%Y%m%d_%H')
@@ -389,10 +367,12 @@ class reduc_wvr_pager(initialize):
         lastFile= fl[-1]
         stat = os.stat(lastFile)
         delta_seconds = time.time()-stat.st_ctime
+
         if delta_seconds > 60:
-            print "Current File:%s last update:%d s ago, has Stalled: FAIL"%(lastFile,delta_seconds)
+            print "Current File:%s, last update:%ds ago, has Stalled"%(lastFile, delta_seconds)
         else:
-            print "Current File:%s, last update:%d s ago, is Updating: PASS"%(lastFile, delta_seconds)
+            print "Current File:%s, last update:%ds ago, is Updating"%(lastFile, delta_seconds)
+        self.passfailmsg("Current File", delta_seconds <= 60)
 
         os.chdir(cwd)
 
@@ -413,14 +393,13 @@ class reduc_wvr_pager(initialize):
         
         nfiles = size(aout.split('\n'))
         if nfiles >= 5:
-            print "Number of files in last hour: %d : PASS"%nfiles
-            return 0
-        elif (nfiles < 5 ) and (nfiles >=1):
-            print "Number of files in last hour: %d : WARNING"%nfiles
-            return 1
-        else: 
-            print "Number of files  in last hour: %d : FAIL"%nfiles
-            return 1
+            passfail = "PASS"
+        elif (nfiles < 5) and (nfiles >=1):
+            passfail = "WARNING"
+        else:
+            passfail = "FAIL"
+        self.passfailmsg("Number of files in last hour: %d" % nfiles, passfail)
+        return int(nfiles >= 5)
 
     def checkFileSizeStatus(self, time=0, prefix='log',thres = 1e4, verb=True):
         """
@@ -444,23 +423,22 @@ class reduc_wvr_pager(initialize):
         fail = 0
         for i in range(nfiles):
             if verb: print listing[i]
-            if int(listing[i].split()[4]) < thres :
+            if int(listing[i].split()[4]) >= thres :
                 pas = pas+1
             else:
                 fail = fail+1
 
         print "%s \"%s\" files written in past day"%(nfiles, prefix)
 
-        if thres > 0:
-            if pas > fail:
-                print "%d files below %d bytes threashold"%(pas,thres)
-                print "%s file size: PASS"%prefix
-                return 0
-            else:
-                print "%d files above %d bytes threashold"%(fail,thres)
-                print "%s file size: FAIL"%prefix
-                return 1
-        
+        if pas > fail:
+            print "%d files below %d bytes threashold"%(pas,thres)
+            self.passfailmsg("%s file size" % prefix, True)
+            return 0
+        else:
+            print "%d files above %d bytes threashold"%(fail,thres)
+            self.passfailmsg("%s file size" % prefix, False)
+            return 1
+
     def checkUniqueProcess(self,pname="wvr", verb=True):
          
         cmd = 'ps -elf |grep  %s |grep -v grep| grep -v checkProcess.py'%pname
@@ -471,8 +449,8 @@ class reduc_wvr_pager(initialize):
 
         nproc = 0
         if listing == []:
-            print "Unique Daq script: FAIL"
-            print "Zero process containing %s"%pname
+            print "Unique Daq script: Zero process containing %s"%pname
+            self.passfailmsg("Unique Daq script", False)
             return 1
         else:
             for line in listing:
@@ -480,11 +458,12 @@ class reduc_wvr_pager(initialize):
                     nproc = nproc+1
                     if verb: print line
             if (nproc == 2) or (nproc == 1):
-                print "%d script running currently"%nproc
-                print "Unique Daq script: PASS"
+                print "Unique Daq script: %d script running currently"%nproc
+                self.passfailmsg("Unique Daq script", True)
                 return 0
             else:
-                print "Unique Daq script: FAIL"
+                print "Unique Daq script: %d script running currently"%nproc
+                self.passfailmsg("Unique Daq script", False)
                 return 1
 
             
