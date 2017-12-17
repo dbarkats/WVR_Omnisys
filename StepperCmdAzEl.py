@@ -113,11 +113,14 @@ class stepperCmd():
         if self.lock.acquire():
             try:
                 if (self.debug): print "Opening socket ip %s"%self.ip
+                self.lw.write("Opening az/el socket ip %s "%self.ip)
                 self.s = S.Socket(S.socket.AF_INET, S.socket.SOCK_STREAM)
                 self.s.connect((self.ip,self.port))
                 status = 0
             except:
                 self.lw.write('Cannot open socket ip: %s at port %d'%(self.ip,self.port))
+                if self.debug: print 'Cannot open socket ip: %s at port %d'%(self.ip,self.port)
+                
                 status = 2
             self.lock.release()
         else:
@@ -138,6 +141,7 @@ class stepperCmd():
             print "could not acquire lock (StepperCmdAzEl.closePort)"
         
     def homeEl(self):
+        self.lw.write("Homing El stepper motor")
         self.stepMotorEl('-9999')
         #self.getElPos()
 
@@ -200,11 +204,13 @@ class stepperCmd():
             else:
                 logMsg = 'Computer commanded Arduino to move el to %s steps'%Nsteps
             self.lw.write(logMsg)
+            if self.debug: print logMsg
 
             self.lw.write("Waiting %2.1f s for el move to finish"%waitTime)
             if self.debug: print "Waiting %2.1f s for el move to finish"%waitTime
             time.sleep(waitTime)
             self.lw.write("Move finished")
+            if self.debug: print "Move finished"
             status = 0
         else:
             print "could not acquire lock (StepperCmdAzEl.stepMotorEl)"
@@ -248,12 +254,15 @@ class stepperCmd():
 #Az commands below
 
     def homeAz(self):
-        WaitTime = 40
+        self.lw.write("Homing Az stepper motor")
+        WaitTime = 110
         self.lw.write("Az homing move: Waiting Max %2.0fs for move to finish"%WaitTime)
         azPos0 = self.getAzPos()
         self.stepMotorAz('-9999')
         timeCount = 0
+        time.sleep(0.1)
         azPos = self.getAzPos()
+        self.lw.write(azPos)
         while((azPos != 0) and (timeCount < WaitTime)):
             azPos = self.getAzPos()
             deltaAzPos = azPos - azPos0

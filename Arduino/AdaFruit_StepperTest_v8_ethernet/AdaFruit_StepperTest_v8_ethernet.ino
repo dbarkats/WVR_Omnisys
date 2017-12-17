@@ -53,6 +53,10 @@ void backwardstepel() {
 AccelStepper stepperaz(forwardstepaz, backwardstepaz); // use functions to step
 AccelStepper stepperel(forwardstepel, backwardstepel); // use functions to step
 
+// Set up speed for whole observations except homing which is always 182
+//const int spd = 182;   //speed for normal scanAz scanning ~12deg/s
+const int spd = 50;   // beam mapping speed = ~3.5deg/s
+
 //  Ethernet shield settings
 const int port = 4321;
 byte ip[] = {192, 168, 168, 233};
@@ -77,11 +81,8 @@ void setup() {
    // we want 320 microsteps/s = 36deg/s for 16 microsteps per step
    // we want 160 microsteps/s = 36deg/s for 8 microstep per step
    // add 4% to account for small overhead so 166 microsteps per second
-    //add some more to account for slow down due to requesting position at 48ms 
-  
-  // stepperaz.setMaxSpeed(182);    // speed for normal scanAz scanning ~12deg/s
-  stepperaz.setMaxSpeed(50);        // speed for beam mapping ~3.5deg/s
-
+    //add some more 182 microsteps per second to account for slow down due to requesting position at 48ms 
+  stepperaz.setMaxSpeed(spd);       
   stepperaz.setAcceleration(30000); 
     
   stepperel.setMaxSpeed(400);       

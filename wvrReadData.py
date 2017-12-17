@@ -23,13 +23,12 @@ class wvrReadData(initialize):
             
         d=[]
         for filename in fl:
-            print "Reading %s"%filename
             date = filename[0:8]
             if not(os.path.isfile(self.dataDir+filename)):
-                print "WARNING: Skipping %s: File missing"%filename
+                if verb: print "WARNING: Skipping %s: File missing"%filename
                 continue
             elif os.path.getsize(self.dataDir+filename) == 0:
-                print "WARNING: Skipping %s: File size 0"%filename
+                if verb: print "WARNING: Skipping %s: File size 0"%filename
                 continue
             else:
                 if verb: print "Reading %s"%filename
@@ -82,7 +81,6 @@ class wvrReadData(initialize):
             tilt = vstack([d['f20'],d['f21'],d['f22'],d['f23']]).T #x,y,z,temp tilt
         else:
             tilt = None
-
         utwx, wx = self.readWxFile(fileList,verb=verb)
         if utwx == None:
             wxnew = None
@@ -210,10 +208,10 @@ class wvrReadData(initialize):
         d=[]
         for filename in fl:
             if not(os.path.isfile(self.dataDir+filename)):
-                print "Skipping %s: File missing"%filename
+                if verb: print "Skipping %s: File missing"%filename
                 continue
             elif os.path.getsize(self.dataDir+filename) == 0:
-                print "Skipping %s: File size 0"%filename
+                if verb: print "Skipping %s: File size 0"%filename
                 continue
             if verb: print "Reading %s"%filename
             e = genfromtxt(self.dataDir+filename, delimiter='',skip_header=3, names=True,dtype=None,invalid_raise = False)
@@ -249,7 +247,6 @@ class wvrReadData(initialize):
             ymd = f.split('_')[0]
             day =  datetime.strptime(ymd,'%Y%m%d')
             fmtchg1 = datetime.strptime('20171205','%Y%m%d')
-            print day, fmtchg1
             hms = f.split('_')[1]
             if self.unit == 'wvr1':
                 ext = 'Spo'

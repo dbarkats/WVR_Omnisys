@@ -6,6 +6,7 @@ Scripts to generate reduc plots of the WVR data.
 
 import glob
 import os,sys
+sys.path.append('/home/dbarkats/wvr_pipeline/utils/')
 envDisplay = os.getenv('DISPLAY')
 if  (envDisplay == None):
     print "Using Agg matplotlib backend"
@@ -17,6 +18,7 @@ else:
     #mpl.use('TkAgg')
 from pylab import *
 from datetime import datetime, timedelta
+import time
 from subprocess import Popen, PIPE
 
 import wvrScience
@@ -38,7 +40,7 @@ class reduc_wvr_pager(initialize):
         self.wvrR = wvrReadData.wvrReadData(self.unit)
 
     def getcutFileList(self):
-        print "loading cutFile list..."
+        #print "loading cutFile list..."
         d =  loadtxt(self.home+'/wvr_pipeline/%s_cutFileListPIDTemps.txt'%self.unit,comments='#',delimiter=',',dtype='S15')
         if size(d) == 0:
             self.cutFileListPIDTemp = []
@@ -259,6 +261,43 @@ class reduc_wvr_pager(initialize):
                 os.system(cmd)
         os.chdir(cwd)
 
+    def checkAzSkips(self, verb=True):
+        todaystr = datetime.now().strftime('%Y%m%d')
+        nowm1hr = (datetime.now()-timedelta(minutes=60)).strftime('%Y%m%d_%H*')
+        cwd = os.getcwd()
+        os.chdir(self.dataDir)
+        fl=sort(glob.glob('%slog*'%nowm1hr))
+        lastFile = fl[-1]
+        f = open(lastFile,'r')
+        lines = f.readlines()
+        f.close()
+        dA=[]
+        for line in lines:
+            if 'DeltaAz' in line:
+                dA.append(float(line.split('DeltaAz:')[1].split(',')[0]))
+        if (dA[-2] == 0):
+            print "AzSkipCheck: deltaAz:%.1f File %s: PASS"%(dA[-2],lastFile)
+        elif ((dA[-2] >359) and (dA[-2] < 361)):
+            print "AzSkipCheck: deltaAz:%.1f, File %s: PASS"%(dA[-2],lastFile)
+        else:
+            print "AzSkipCheck: deltaAz:%.1f, File %s: FAIL"%(dA[-2],lastFile)
+        os.chdir(cwd)
+
+    def getDevicesIP(self,verb=True):
+        names = ['wvr','azel Arduino MEGA','pidTemp Arduino Due']
+        ips = ['192.168.168.230','192.168.168.233','192.168.168.234']
+        
+        for (ip,name) in zip(ips, names):
+            cmd = 'ping -c 3 %s'%ip
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE,shell=True)
+            aout,aerr = p.communicate()
+            if (verb): print aout, aerr, "Return code: %d"%p.returncode
+            if p.returncode == 0:
+                print "%19s IP:%10s: PASS"%(name, ip)
+            else:
+                print "%19s IP:%10s: FAIL"%(name, ip)
+       
+
     def getDevices(self, verb=True):
         """
         check for the presence of arduino and newport devices.
@@ -340,6 +379,22 @@ class reduc_wvr_pager(initialize):
             print "crontab status: PASS"
             return 1
 
+    def checkCurrentFileStatus(self):
+        todaystr = datetime.now().strftime('%Y%m%d_%H')
+        cwd = os.getcwd()
+        os.chdir(self.dataDir)
+        fl=sort(glob.glob('%s*log*'%todaystr))
+        lastFile= fl[-1]
+        stat = os.stat(lastFile)
+        delta_seconds = time.time()-stat.st_ctime
+        if delta_seconds > 60:
+            print "Current File:%s last update:%d s ago, has Stalled: FAIL"%(lastFile,delta_seconds)
+        else:
+            print "Current File:%s, last update:%d s ago, is Updating: PASS"%(lastFile, delta_seconds)
+
+        os.chdir(cwd)
+
+
     def checkDataStatus(self, prefix='', verb = True):
         """
         checks if files are present during last hour
@@ -356,13 +411,13 @@ class reduc_wvr_pager(initialize):
         
         nfiles = size(aout.split('\n'))
         if nfiles >= 5:
-            print "Files written in last hour: %d : PASS"%nfiles
+            print "Number of files in last hour: %d : PASS"%nfiles
             return 0
         elif (nfiles < 5 ) and (nfiles >=1):
-            print "Files written in last hour: %d : CHECK"%nfiles
+            print "Number of files in last hour: %d : WARNING"%nfiles
             return 1
         else: 
-            print "Files written in last hour: %d : FAIL"%nfiles
+            print "Number of files  in last hour: %d : FAIL"%nfiles
             return 1
 
     def checkFileSizeStatus(self, time=0, prefix='log',thres = 1e4, verb=True):
@@ -411,18 +466,19 @@ class reduc_wvr_pager(initialize):
         aout,aerr = p.communicate()
         if (verb): print aout,aerr
         listing =  aout.split('\n')[:-1]
-        
+
         nproc = 0
         if listing == []:
             print "Unique Daq script: FAIL"
-            print "No process containing %s"%pname
+            print "Zero process containing %s"%pname
             return 1
         else:
             for line in listing:
-                if (('wvrNoise.py' in line) or ('wvrObserve1hr.py' in line)):
+                if (('wvrNoise.py' in line) or ('wvrObserve1hr.py' in line) or ('wvrBeamMap.py' in line)):
                     nproc = nproc+1
                     if verb: print line
-            if nproc == 2:
+            if (nproc == 2) or (nproc == 1):
+                print "%d script running currently"%nproc
                 print "Unique Daq script: PASS"
                 return 0
             else:
@@ -433,20 +489,19 @@ class reduc_wvr_pager(initialize):
     def getDailyPIDTempsStats(self, start = None, verb = True):
         
         fl = self.makeFileListFromData(start=start)
-        utTime, sample, wx, temps, input, output = self.wvrR.readPIDTempsFile(fl,verb=verb)
+        utTime, sample, wx, temps, input, output, tilt = self.wvrR.readPIDTempsFile(fl,verb=verb)
 
         print ''
         print '#############################################'
-        if utTime == 0:
-            print "PID temps files are empty. Skipping"
-            return
-        print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
-        print "Inside WVR air Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(input),median(input),max(input),std(input))
-        print "Outside NOAA Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
-        print "Main heater Output (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(output[:,0]),median(output[:,0]),max(output[:,0]),std(output[:,0]))
-        print "Az stage Temp (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
-        print "Wind Speed (Min/Mean/Max/std): %3.1f/%3.1f/%3.1f/%3.1f"%(nanmin(wx['wsms']),nanmean(wx['wsms']),nanmax(wx['wsms']),nanstd(wx['wsms']))
-
+        try:
+            print "PID temps stats from %s to %s"%(utTime[0].strftime('%Y%m%d %H%M%S'), utTime[-1].strftime('%Y%m%d %H%M%S'))
+            print "Inside WVR air Temp (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(input),median(input),max(input),std(input))
+            print "Outside NOAA Temp   (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(wx['tempC']),median(wx['tempC']),max(wx['tempC']),std(wx['tempC']))
+            print "Main heater Output  (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [0-4095]"%(min(output[:,0]),median(output[:,0]),max(output[:,0]),std(output[:,0]))
+            print "Az stage Temp       (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [C]"%(min(temps[:,9]),median(temps[:,9]),max(temps[:,9]),std(temps[:,9]))
+            print "Wind Speed          (Min|Mean|Max|std): %5.1f|%5.1f|%5.1f|%5.1f [m/s]"%(nanmin(wx['wsms']),nanmean(wx['wsms']),nanmax(wx['wsms']),nanstd(wx['wsms']))
+        except:
+            print "somthing failed in reading PIDTemps file"
 
     def getDailyStatStats(self, start = None, complete=False, verb=True):
         
