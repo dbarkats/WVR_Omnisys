@@ -1,6 +1,6 @@
 import os, sys
 from pylab import *
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit,least_squares
 import matplotlib.cm as cmap
 from matplotlib.dates import DateFormatter, DateLocator, AutoDateLocator, num2date, date2num
 from operator import itemgetter
@@ -19,6 +19,11 @@ from initialize import initialize
 #     }
 #}
 #scipy.io.savemat('test.mat', data)
+
+def smooth(y, box_pts):
+        box = np.ones(box_pts)/box_pts
+        y_smooth = np.convolve(y, box, mode='same')
+        return y_smooth
         
 
 class wvrScience(initialize):
@@ -35,11 +40,11 @@ class wvrScience(initialize):
         initialize.__init__(self, unit)
         self.wvrR = wrd.wvrReadData(self.unit)
 
-    def plotAtmogram(self, fileList, inter=False,verb=True):
+    def plotAtmogram(self, fileList, inter=False,verb=True, fitphase = True):
         '''
         Created by NL 20161010
         Re-written by dB 20161110
-        TODO: Store data in  pickle as intermediate product
+        TODO: Store data in pickle as intermediate product
 
         '''
         if inter:
@@ -47,17 +52,17 @@ class wvrScience(initialize):
         else:
             ioff()
             
-        nfiles = size(fileList)
-        pcoef= {0:None, 1:None, 2:None, 3:None} # initialize fit coef for all 4 channels
-        D = {0:None, 1:None, 2:None, 3:None}
-        Dres = {0:None, 1:None, 2:None, 3:None}
-        Dbl = {0:None, 1:None, 2:None, 3:None}
+        nfiles = size(fileList)               # nfiles to analyze
+        pcoef= {0:None, 1:None, 2:None, 3:None} # init fit coef for  4 chans
+        D = {0:None, 1:None, 2:None, 3:None}    # init maps for 4 chans
+        Dres = {0:None, 1:None, 2:None, 3:None} # init map residuals for 4 chans
+        Dbl = {0:None, 1:None, 2:None, 3:None} # init maps baseline for 4 chans
         c = ['b','r','g','m']
 
         if verb: print "Loading %d slow files"%nfiles
         utslow,tslow,d,azslow,elslow,tsrc = self.wvrR.readSlowFile(fileList)
         nchan = shape(tsrc)[1]
-        dres = zeros(shape(tsrc))  # initialize residuals on the 4 tsrc
+        dres = zeros(shape(tsrc))  # init residuals on the 4 tsrc
         if size(tslow) == 1: return
         waz, fs = self.findScans(azslow)
         fname = fileList[0].split('_')
@@ -78,7 +83,7 @@ class wvrScience(initialize):
         #Loop through channels
         for i in range(nchan):
             
-            res, pcoef0, baseline = self.filterScans(waz, tsrc[:,i], fs, 'sin')
+            res, pcoef0, baseline = self.filterScans(waz, tsrc[:,i], fs, 'sin', fitphase)
             dres[:,i]=res
             pcoef[i] = pcoef0
             D[i] = self.interpToImage(waz, tsrc[:,i], fs)
@@ -114,7 +119,7 @@ class wvrScience(initialize):
         savefig(title+'.png')
 
         # plot fit params
-        figure(11, figsize=figsize);clf()
+        figure(12, figsize=figsize);clf()
         for i in range(nchan):
             
             sp1 = subplot(3,2,1)
@@ -175,7 +180,7 @@ class wvrScience(initialize):
 
         # plot residuals
         az_temp={}
-        figure(12, figsize=figsize);clf()
+        figure(13, figsize=figsize);clf()
         for i in range(nchan):
             sp = subplot(5,1,i+1)
             for j in range(sd[1]):
@@ -208,22 +213,18 @@ class wvrScience(initialize):
         
         return waz, D, Dres, Dbl, pcoef
 
- 
-
     ##############################
     #### Helper functions and fitting functions
     
     def makeTiltModel(self, az):
         '''
         function to write out a tilt model which saves for each tag (scanAz tags mostly)
-          tag,  datetime, thethaz, and eventually the amplitude of the tilt ( so we don't have to fit the ampltude either)
+          tag, datetime, theth_az, phi_az 
         '''
-
 
         # get a file list of azscan
         # find the  amp ,ang and offset for each of those 1 hour tags. using testAngFit
-        # need to test a new fit than just sinwave but not in testAngFit
-        # find the relationship between  the building tilts and the amp and ang found from the sin fits. Do this using  findAngles which does a minimization
+        # find the relationship between the building tilts and the amp and ang found from the sin fits. Do this using  findAngles which does a minimization
         # then write a new function ( this one) which saves in a structure the  tiltModel along with time. The goal is to have for each 1hr tag a phase/amp to be used for the  actual data  fit.
 
         class stru:
@@ -232,81 +233,138 @@ class wvrScience(initialize):
                 self.s = []
                 self.e = []
 
-        
-    
-    def findAngles(self,tilt, ang):
-        """
-        
-        """
-        n = shape(ang)[0]
-        ind1 = ind1=arange(0,n,4)
-        ang1 = asarray(ang)
 
-        xloop =  arange(0,2.0,0.005)
-        yloop = arange(-140,-120,1.0)
-        chisq = zeros([size(xloop),size(yloop)])
-        y = ang1[ind1,0]
-        for j,jval in enumerate(yloop):
-            for i,ival in enumerate(xloop):
-                x = rad2deg(arctan2(tilt[:,2]+ival,tilt[:,0]+ival))+jval
-                chisq[i,j]=nansum((x-y)**2)/size(x)
-                print j
-                
-        minx,miny = unravel_index(chisq.argmin(), chisq.shape)
-        print minx,miny
-        print xloop[minx], yloop[miny]
-        xf = rad2deg(arctan2(tilt[:,2]+xloop[minx],tilt[:,0]+xloop[minx])) + yloop[miny]
+    def findAngles(self,tilts, p, channel = 0):
+        """
+        utslow, tilts = wvrR.readTiltFile(fl_tilt)
+        p = wvrS.testAngFit(fl)
+        
+        Fit theta_az = arctan(ytilt+C1/xtilt+C1) +C2
+            phi_az = sqrt(xtilt^2+ytilt^2) +C3
+            C3 related C1/C2
+            Loop over C1 and C2
+        """
+        ch = channel
+        el0 = 55
+        
+        # define the  theta_az function of tilts
+        def theta_az(tilts,x0):
+            C1,C2,C3 = x0
+            return rad2deg(arctan2(tilts[:,2]+C1,tilts[:,0]+C2))+C3
+
+        #define residual
+        def theta_az_res(x0,tilts,ph):
+            theta = theta_az(tilts,x0)
+            theta_wvr = ph
+            residual = theta - theta_wvr
+            return residual
+
+        # take median of 4 channels phase.
+        ph = median(p[:,:,1,0],0)  
+        sol = least_squares(theta_az_res, [1.,1,-80],args=(tilts,ph))
+        theta_az_sol = theta_az(tilts,sol.x)
+        print sol.success, sol.x
+
         bins = arange(-100,100,1)
-        clf()
+        figure(2);clf()
         subplot(2,1,1)
-        plot(y,'.')
-        plot(xf,'.')
+        plot(ph,'.b')
+        plot(theta_az_sol,'g.')
         xlabel('time since start of season [tags]')
         ylabel('theta az [deg]')
-        legend([' per tag fitted phase of WVR data','measured building pitch/roll adjusted to fit phase'])
+        legend(['per tag fitted phase of WVR data','measured building pitch/roll adjusted to fit phase'])
         subplot(2,1,2)
-        hist(xf-y,bins=bins)
+        hist(theta_az_sol-ph,bins=bins)
         xlabel('histogram of diff')
-        savefig('pitch_roll_fit_to_per_tag_phase.png')
-        
+        #savefig('pitch_roll_fit_to_per_tag_phase.png')
         # 20161129: best fit is xf = arctan2(roll+0.945,pitch+0.945)-128
-        return xloop,yloop,chisq
+
+        # solve for Tatm, tau0, phi 
+        # get factors D1,D2,D3
+        def phi_az(x0,tilts,dc,mod):
+            D1, D2, D3, D4 = x0
+            phi = sqrt((tilts[:,0]+D1)**2+(tilts[:,2]+D2)**2)
+            phi_wvr = rad2deg(D3*mod/(dc-D4))
+            return phi, phi_wvr
+        
+        def phi_az_res(x0,tilts,dc,mod):
+            phi,phi_wvr = phi_az(x0,tilts,dc,mod)
+            return phi - phi_wvr
+            
+        # loop over channels
+        for i in range(4):
+            dc = p[i,:,2,0]
+            mod = p[i,:,0,0]
+            sol = least_squares(phi_az_res, [1.,1,1.0,-270],args=(tilts,dc,mod))
+            phi_az_sol = phi_az(tilts,sol.x)
+            print sol.success, sol.x
+
+        print "Tatm=%3.2f, tau0=%3.2f"%(D2, tau0)
+        phi_az = sqrt((tilts[:,0]+D1)**2+(tilts[:,2]+D1)**2)
+        phi_az_wvr = rad2deg(D3*p[ch,:,0,0]/(p[ch,:,2,0]-D2))
+        
+        figure(4);clf()
+        subplot(2,1,1)
+        plot(phi_az,'g.')
+        plot(phi_az_wvr,'b.')
+        xlabel('time since start of season [tags]')
+        ylabel('phi az [deg]')
+        bins = arange(-.5,.5,0.01)
+        subplot(2,1,2)
+        hist(phi_az-phi_az_wvr,bins=bins)
+        xlabel('histogram of diff')
+        #savefig('pitch_roll_fit_to_per_tag_phase.png')
+        return C1, C2, D1, D2, D3
 
     def testAngFit(self, fl):
-
-        bounds=((0, -360, 0), (inf, 360, inf))
-
+        """
+        For each 1hr of data, read the azScan dataset.
+        Use the slow data.
+        For each of the 4 channels
+        Remove p0 (DC level) at each 360-scan
+        Then fit a single sine wave to the whole 1-hr observation to obtain the phase. 
+        We also get the amplitude and the DC offset but those are irrelevant.
+        """
+        bounds=((0, -180, 0), (inf, 180, inf))
+        
         # define the function to fit to:
         def sinusoidal(x,amplitude,phase,offset):
             return amplitude * sin(deg2rad(x+phase)) + offset
         
-        # define the function to fit to:
-        # need to improve on the functional form to be fit.
-        def skydip(az,Tamb,phase,Toffset,tau0):
-            elcmd = 55.0
-            az = az-theta_az
-            el = elcmd + phi*sin(deg2rad(az))
-            return Tamb * (1- exp(-tau0/sin(deg2rad(el))))
+        nobs = size(fl)
+        pcoef = zeros([4, nobs, 3, 2]) # 4chans x nobs x 3=amp,phase,offset x 2=val,error
 
-        ang= []
-        amp = []
-        off = []
-        for f in fl:
+        for i,f in enumerate(fl):
             utslow,tslow,d,azslow,elslow,tsrc = self.wvrR.readSlowFile(f)
             if size(d) == 1: continue
             waz,fs =  self.findScans(azslow)
             
-            for i in range(4):
-                res, pcoef0, baseline = self.filterScans(waz, tsrc[:,i], fs, 'p0')
-                fit, pcov= curve_fit(sinusoidal, azslow, res, p0=[1.0,-80.0,0.0],bounds=bounds)
-                print fit
+            for j in range(4):
+                res, pcoef0, baseline = self.filterScans(waz, tsrc[:,j], fs, 'p0')
+                fit, pcov= curve_fit(sinusoidal, azslow, smooth(res,5), p0=[1.0,-80.0,0.0],bounds=bounds)
                 fit_err = sqrt(diag(pcov))
-                amp.append([fit[0],fit_err[0]])
-                ang.append([fit[1],fit_err[1]])
-                off.append([fit[2],fit_err[2]])
+                pcoef[j,i,0,:]=[fit[0],fit_err[0]]
+                pcoef[j,i,1,:]=[fit[1],fit_err[1]]
+                pcoef[j,i,2,:]=[mean(pcoef0),1]
 
-        return amp,ang,off
-
+                debug=0
+                if debug:
+                    clf()
+                    subplot(2,1,1)
+                    #plot(azslow,res)
+                    plot(azslow,smooth(res,5),'g')
+                    plot(azslow,sinusoidal(azslow,*fit),'r')
+                    print fit
+                    print fit2
+                    title('%s chan:%s'%(f,j))
+                    subplot(2,1,2)
+                    loglog(abs(fft(sinusoidal(azslow,*fit))),'r')
+                    loglog(abs(fft(res)))
+                    xlim([100,200])
+                    draw()
+                    raw_input()
+            
+        return pcoef
 
     def findScans(self, az):
         '''
@@ -323,7 +381,7 @@ class wvrScience(initialize):
         naz = size(az)
         (scannum, az) = divmod(az,360)
         s = [next(group)[0] for key, group in groupby(enumerate(scannum), key=itemgetter(1))]  # indices of start of scan
-        e = s[1:] ; e.append(naz) # indicies of end of scan
+        e = s[1:] ; e.append(naz) # indices of end of scan
         
         fs = stru()
         fs.num = scannum
@@ -350,11 +408,11 @@ class wvrScience(initialize):
 
         return D
 
-    def filterScans(self, waz, d, fs,filttype):
+    def filterScans(self, waz, d, fs,filttype, fitphase=True):
         """
         filttype can be p0, p1, p2 p3 for poly subtraction
-        filt type can be cos/sun
-        filt type can be ground subtraction
+        filt type can be sin
+
         """
     
         if filttype[0] == 'n':
@@ -362,11 +420,13 @@ class wvrScience(initialize):
             print "do nothing"
         elif filttype[0]=='p':
             # subtract poly of required order
-            [d,pcoef, baseline]=self.polysub_scans(d,fs,int(filttype[1:]))
+            [d, pcoef, baseline]=self.polysub_scans(d,fs,int(filttype[1:]))
         elif filttype == 'sin':
             # do cos fit
-            [d,pcoef, baseline] = self.sinsub_scans(waz, d, fs)
-            
+            [d,pcoef, baseline] = self.sinsub_scans(waz, d, fs,fitphase)
+        elif filttype == 'skydip':
+            [d,pcoef, baseline] = self.expsub_scans(waz, d, fs)   
+
         return  d, pcoef, baseline
 
     
@@ -392,16 +452,16 @@ class wvrScience(initialize):
             
         return y, pcoef, b
             
-
-    def sinsub_scans(self, waz, d, fs):
+    def sinsub_scans(self, waz, d, fs,fitphase):
         '''
-        Slice the data in  each scan and remove a sin fit to each scan
+        Slice the data in each scan and remove a sin fit to each scan
         '''
-        
         # define the function to fit to:
-        def sinusoidal(x,amplitude,phase,offset):
-            return amplitude * sin(deg2rad(x+phase)) + offset
+        def sinusoidal(x,amp,phase, off):
+            return amp * sin(deg2rad(x+phase)) + off
         
+        bounds3=((0, -360, 0), (inf, 360, inf))
+        bounds2=((0, 0), (inf,inf))
         nscans = len(fs.s)
         y = copy(d)  # to store the residuals
         b = zeros(shape(d)) # to store the cosine fit
@@ -411,21 +471,90 @@ class wvrScience(initialize):
 
         # Assume frequency = 1 rotation in 360deg.
         # initial guesses:
-        offset0 = mean(d)
-        A0 = 1.0
-        ph0 = 0.0
-        params0 = [A0, ph0, offset0]
+        ph0 = -60
+        params0 = [1.0, ph0, mean(d)]
 
         # loop over each 360 scan
         for i in range(nscans):
             s = fs.s[i];e=fs.e[i]
             idx = range(s,e)
-            fit, pcov= curve_fit(sinusoidal, waz[idx], y[idx], p0=params0)
-            fiterr = sqrt(diag(pcov))
+            if(fitphase):
+                fit, pcov= curve_fit(sinusoidal, waz[idx], y[idx], p0=params0,bounds=bounds3)
+                fiterr = sqrt(diag(pcov))
+            else:
+                fit, pcov= curve_fit(lambda x,_amp,_off: sinusoidal(x,_amp,ph0,_off), waz[idx], y[idx], p0=[1.0,200],bounds=bounds2)
+                fit = [fit[0],ph0,fit[1]]
+                fiterr = sqrt(diag(pcov))
+                fiterr = [fiterr[0],0.0,fiterr[1]]
+
             baseline = sinusoidal(waz[idx],*fit)
-            #print '%d of %d'%(i,nscans)
 
             debug=0
+            if debug:
+                print '%d of %d'%(i,nscans)
+                print fit
+                clf()
+                plot(waz[idx],y[idx],'.-')
+                plot(waz[idx],baseline,'r')
+                title('%d of %d'%(i,nscans))
+                xlim([0,360])
+                raw_input()
+
+            y[idx] = y[idx] - baseline
+            b[idx] = baseline
+            pcoef[i,:,0]=fit
+            pcoef[i,:,1]=fiterr
+            
+            # define new starting point params results of last fit.
+            #params0 = fit
+            
+        return y, pcoef, b
+
+    def expsub_scans(self, waz, d, fs):
+        '''
+        Slice the data in each scan and remove an exp fit to each scan
+        '''
+        bounds = ((240, 0, -2), (280, 4, 4))
+        # define the function to fit to:
+        def skydip(x,Tatm,tau0,phi):
+            kappa = -60
+            el0 = deg2rad(55)
+            c = cos(el0)
+            s = sin(el0)
+            Tcmb = 2.73
+            eps =  phi*sin(deg2rad(x + kappa))
+            DC = Tatm + ((Tcmb - Tatm))*exp(-tau0/s)
+            fac = -c * eps +eps**2*(s/2+c**2/s+c**2/2.)
+            MOD = DC*fac
+
+            return DC+MOD
+            
+        nscans = len(fs.s)
+        y = copy(d)  # to store the residuals
+        b = zeros(shape(d)) # to store the cosine fit
+        
+        # initialize some lists to hold the fit parameters
+        pcoef = zeros([nscans, 3, 2]) 
+
+        # Assume frequency = 1 rotation in 360deg.
+        # initial guesses:
+        params0 = [mean(d), 2.0, 1.0]
+
+        # loop over each 360 scan
+        for i in range(nscans):
+            s = fs.s[i];e=fs.e[i]
+            idx = range(s,e)
+            try:
+                fit, pcov= curve_fit(skydip, waz[idx], y[idx], p0=params0,bounds=bounds)
+            except:
+                fit = [nan,nan,nan]
+                fiterr = [nan,nan,nan]
+            fiterr = sqrt(diag(pcov))
+            baseline = skydip(waz[idx],*fit)
+            print '%d of %d'%(i,nscans)
+            print fit
+
+            debug=1
             if debug:
                 clf()
                 plot(waz[idx],y[idx],'.-')
@@ -440,70 +569,22 @@ class wvrScience(initialize):
             pcoef[i,:,1]=fiterr
             
             # define new starting point params results of last fit.
-            params0 = fit
+            #params0 = fit
             
         return y, pcoef, b
-        
 
-       
-    def sliceFitSinusoidal_LS(self, az360, data, uttime, dt):
-        '''
-        Slice up the data into time bins of size dt and fit a cosine function to the data points in that bin.
-        '''
 
-        #note date2num returns number of days (NOT sec) since beginning of gregorian calendar.
-        xmin = date2num(uttime[0])
-        xmax = date2num(uttime[-1])
-        ymin = 0
-        ymax = 360
-        ttot = xmax-xmin
-
-        slicestart = [0]*np.floor(ttot/dt)
-        sliceend = [0]*np.floor(ttot/dt)
-        pointsinslice = [0]*np.floor(ttot/dt)
-        for ss in range((np.floor(ttot/dt)).astype(int)):
-            slicestart[ss] = (xmin + ss*dt)
-            sliceend[ss] = (xmin + (ss+1)*dt)
-
-        # initialize some lists to hold the fit parameters
-        Aslice = [np.nan]*np.floor(ttot/dt) #store the amplitudes from the fits to each slice in this list
-        Aslice_err = [np.nan]*np.floor(ttot/dt)
-        phslice = [np.nan]*np.floor(ttot/dt) #store the phases in this list
-        phslice_err = [np.nan]*np.floor(ttot/dt)
-        offsetslice = [np.nan]*np.floor(ttot/dt) #store the DC offsets in this list
-        offsetslice_err = [np.nan]*np.floor(ttot/dt)
-        #slicestart_final = [np.nan]*np.floor(ttot/dt)
-        #sliceend_final = [np.nan]*np.floor(ttot/dt)
-
-        az2pi = az360*np.pi/180
-        X = np.asarray([np.ones(size(az2pi)), np.cos(az2pi), np.sin(az2pi)])
-        X=X.T
-        #print(X.shape)
-
-        for ss, thisslicestart in enumerate(slicestart):
-            thissliceend = sliceend[ss]
-            status_str = 'Fitting to slice %d of %d'%(ss, np.floor(ttot/dt))
-            print(status_str)
-
-            start_idx = au.index_ge(date2num(uttime), thisslicestart)
-            end_idx = au.index_lt(date2num(uttime), thissliceend)
-            
-            idx = np.logical_and(date2num(uttime)>=thisslicestart, date2num(uttime)<thissliceend)
-            
-            if end_idx-start_idx>=10: #only do the fit and scatter plot if there are enough (say >= 10) points.
-                    
-                # Assume frequency = 1 oscillation per every 360 deg scan
-
-                params = np.linalg.lstsq(X[start_idx:end_idx,:],data[start_idx:end_idx])
-                offsetslice[ss] = params[0][0]
-                phslice[ss] = np.arctan2(params[0][2], params[0][1])
-                Aslice[ss] = np.sqrt((params[0][1])**2 + params[0][2]**2)
-
-                phslice[ss]=360.-(phslice[ss])*180./np.pi
-                if phslice[ss]>360:
-                    phslice[ss] = phslice[ss]-360
-                
-
-        return slicestart, sliceend, Aslice, phslice, offsetslice
     
-    # End fn sliceFitSinusoidal_LS
+
+#from scipy.optimize import fsolve
+#import math
+#
+#def equations(p):
+#    x, y = p
+#    return (x+y**2-4, math.exp(x) + x*y - 3)
+
+#x, y =  fsolve(equations, (1, 1))
+
+#print equations((x, y))
+
+#nsolve([x+y**2-4, exp(x)+x*y-3], [x, y], [1, 1])
