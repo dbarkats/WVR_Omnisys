@@ -26,7 +26,6 @@ import wvrPlot
 import wvrReadData
 from initialize import initialize
 
-
 class reduc_wvr_pager(initialize):
 
     def __init__(self, unit=None):
@@ -262,7 +261,6 @@ class reduc_wvr_pager(initialize):
         os.chdir(cwd)
 
     def checkAzSkips(self, verb=True):
-        todaystr = datetime.now().strftime('%Y%m%d')
         nowm1hr = (datetime.now()-timedelta(minutes=60)).strftime('%Y%m%d_%H*')
         cwd = os.getcwd()
         os.chdir(self.dataDir)
@@ -275,12 +273,16 @@ class reduc_wvr_pager(initialize):
         for line in lines:
             if 'DeltaAz' in line:
                 dA.append(float(line.split('DeltaAz:')[1].split(',')[0]))
-        if (dA[-2] == 0):
-            print "AzSkipCheck: deltaAz:%.1f File %s: PASS"%(dA[-2],lastFile)
-        elif ((dA[-2] >359) and (dA[-2] < 361)):
-            print "AzSkipCheck: deltaAz:%.1f, File %s: PASS"%(dA[-2],lastFile)
+        if size(dA) == 1:
+            idx = -1
         else:
-            print "AzSkipCheck: deltaAz:%.1f, File %s: FAIL"%(dA[-2],lastFile)
+            idx = -2
+        if (dA[idx] == 0):
+            print "AzSkipCheck: deltaAz:%.1f, %s: PASS"%(dA[-2],lastFile)
+        elif ((dA[idx] >359) and (dA[idx] < 361)):
+            print "AzSkipCheck: deltaAz:%.1f, %s: PASS"%(dA[-2],lastFile)
+        else:
+            print "AzSkipCheck: deltaAz:%.1f, %s: FAIL"%(dA[-2],lastFile)
         os.chdir(cwd)
 
     def getDevicesIP(self,verb=True):

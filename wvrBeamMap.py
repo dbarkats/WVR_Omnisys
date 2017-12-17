@@ -36,17 +36,16 @@ if __name__ == '__main__':
                       help="-v option will print to Logging to screen in addition to file. Default = False")
     
 (options, args) = parser.parse_args()
-
 #### DEFINE VARIABLES #########
 script = "wvrBeamMap.py"
 azScanningSpeed = 12 # default Arduino hard-wired deg/s
-minScanEl = 19 # in deg
-maxScanEl = 29 # in deg. Must be greater than minScanEl
+minScanEl = 20 # in deg
+maxScanEl = 28 # in deg. Must be greater than minScanEl
 deltaEl = 0.5 # in deg
-Nsteps = int((maxScanEl - minScanEl)/deltaEl)
+Nsteps = int((maxScanEl - minScanEl)/deltaEl +1)
 elSteps = minScanEl + arange(Nsteps)*deltaEl
 NscansPerElStep = 1
-oneStepAzScanningDuration =  NscansPerElStep * 360/azScanningSpeed
+oneStepAzScanningDuration =  4*(NscansPerElStep * 360/azScanningSpeed) + 12
 totalAzScanningDuration = oneStepAzScanningDuration * Nsteps
 NazTurns = floor(totalAzScanningDuration * 12.0/360.)
 
@@ -77,17 +76,18 @@ else:
 lw.write("create wvrAzEl object")
 wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
 
-lw.write("Homing Az stepper motor")
 wvrAE.stopAzRot()
 time.sleep(1)
 wvrAE.homeAz()
 
-lw.write("Homing El stepper motor")
 wvrAE.homeEl()
+lw.write("Done with homing El stepper motor")
+lw.write("Moving to MinScanEl")
 wvrAE.slewEl(minScanEl)
+lw.write("Done with Moving to MinScanEl")
 
 lw.write("Create wvrDaq object")
-daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC,  azelstep=wvrAE, 
+daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, azelstep=wvrAE, 
                     reg_fast=reg_fast, reg_slow=reg_slow, reg_stat=reg_stat,
                     slowfactor=slowfactor, comments="Beam Map observation", 
                     prefix=prefix, debug=False)
@@ -95,32 +95,35 @@ daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC,  azelstep=wvrAE,
 lw.write("create PIDTemps object")
 rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 lw.write("start PIDtemps acquisition in the background")
-tPid1 = threading.Thread(target=rsp.loopNtimes, args=(totalAzScanningDuration +2,))
+tPid1 = threading.Thread(target=rsp.loopNtimes, args=(totalAzScanningDuration +10,))
 tPid1.daemon = True
 tPid1.start()
 time.sleep(1)
 
 lw.write("start wvr data acquisition in the background")
-tDaq1 = threading.Thread(target=daq.recordData, args=(totalAzScanningDuration+2,))
+tDaq1 = threading.Thread(target=daq.recordData, args=(totalAzScanningDuration+10,))
 tDaq1.daemon = True
 tDaq1.start()
-
-lw.write("start az rotation.")
-lw.write("Doing %d turns, %d deg at 12deg/s: %d seconds"%(NazTurns,NazTurns*360.,totalAzScanningDuration))
-wvrAE.slewAz(NazTurns*360.)
+time.sleep(2)
 
 azMax = 0
 for El in elSteps:
-    azMax = azMax + NscansPerElStep*360
-    lw.write("start Az rotation at El=%.2f for %.1f sec"%(El,oneStepAzScanningDuration))
+    lw.write("Slewing to El:%.1f"%El)
     wvrAE.slewEl(El)
-    lw.write("Waiting until this Az scanning ends")
-    
-    while wvrAE.monitorAzPos() < azMax-1.0:
-        azPos = wvrAE.monitorAzPos()
-        print "Going to %d, current AZ: %f, EL:%f "%(azMax, azPos, El)  
+    time.sleep(1.0)
+    azMax = azMax + NscansPerElStep*360
+    wvrAE.slewAz(azMax)
+    lw.write("start Az rotation at El=%.1f for %.1f sec, until az=%.1f"%(El,oneStepAzScanningDuration, azMax))
+    #time.sleep(0.5)
+    azPos = wvrAE.monitorAzPos()
+    lw.write(azPos)
+    while azPos < azMax-0.1:
         time.sleep(2)
-
+        azPos = wvrAE.monitorAzPos()
+        elPos = wvrAE.monitorElPos()
+        print "Commanded Az:%d, current Az:%.2f, El:%.1f"%(azMax, azPos, elPos)  
+        lw.write("Commanded Az:%d, current Az:%.2f, El:%.1f "%(azMax, azPos, elPos))  
+        
 #wait for tdaq1 thread to finish
 while(tDaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
