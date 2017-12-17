@@ -77,7 +77,11 @@ void setup() {
    // we want 320 microsteps/s = 36deg/s for 16 microsteps per step
    // we want 160 microsteps/s = 36deg/s for 8 microstep per step
    // add 4% to account for small overhead so 166 microsteps per second
-  stepperaz.setMaxSpeed(182);   
+    //add some more to account for slow down due to requesting position at 48ms 
+  
+  // stepperaz.setMaxSpeed(182);    // speed for normal scanAz scanning ~12deg/s
+  stepperaz.setMaxSpeed(50);        // speed for beam mapping ~3.5deg/s
+
   stepperaz.setAcceleration(30000); 
     
   stepperel.setMaxSpeed(400);       
@@ -180,11 +184,14 @@ void loop() {
       if (steps == 0) {                 
         server.print("AZ_POS: ") ;
         server.print(stepperaz.currentPosition());
-        server.print(" ");
+        server.print(", ");
         server.print("EL_POS: ") ;
         server.println(stepperel.currentPosition());
       }
      }
+    else if (whichMotor == "b") {       // if az motor stop requested
+           stepperaz.stop();
+    }
     else  {
       server.println("input must be a or e");
     }
