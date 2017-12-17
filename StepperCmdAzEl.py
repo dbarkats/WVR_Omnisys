@@ -42,17 +42,19 @@ class stepperCmd():
                           1000.,  1100.,  1200.,  1300., 1400.,
                           1500.,  1600.,  1700.,  1800., 1900.,
                           2000.,  2100.,  2200.,  2300., 2400.,
-                          2500.,  2600.,  2700.,  2800., 2900.,
-                          3000.,  3100.])
-        # new Nov 2017 calibration results
-        anglePole = array([92.5, 90.1, 87.5, 84.2, 80.9,
-                           78.0, 75.5, 72.3, 69.5, 67.4,
-                           64.8, 61.8, 59.5, 57.2, 54.6,
-                           51.5, 49.7, 46.9, 45.2, 41.9,
-                           39.6, 37.3, 34.4, 31.8, 29.3,
-                           26.1, 23.0, 20.2, 18.0, 14.4,
-                           11.5, 8.5])
+                          2500.,  2600.,  2700.,  2800., 2900.])
        
+        # new Nov 2017 calibration results
+        # measured up and down going. Using only down going
+        # fit a cubic polynomial to angle and interpolated to stepPole positions
+        # to remove measurement error.
+        anglePole =   array([ 90.2,  87. ,  83.9,  80.9,  78. ,
+                              75.2,  72.4,  69.7,  67. , 64.4,  
+                              61.8,  59.3,  56.8,  54.3,  51.8,  
+                              49.4,  46.9,  44.5,  42. ,  39.5,  
+                              37.1,  34.5,  32. ,  29.4,  26.8,  
+                              24.1,  21.4,  18.6,  15.8,  12.9])
+                            
         # used for 2015 and 2016. New angle calibration in Nov 2017.
         # anglePole = array([93.75, 90.45, 87.8, 84.95, 82.15,
         #                   79.45  , 76.85, 74.3, 71.85, 69.4, 67.,
@@ -66,7 +68,7 @@ class stepperCmd():
                             1000.,  1100.,  1200.,  1300.,  1400.,
                             1500.,  1600.,  1700.,  1800.,  1900.,
                             2000.,  2100.,  2200.,  2300.,  2400.,
-                            2500.,  2600.,  2700.,  2800., 2900.,
+                            2500.,  2600.,  2700.,  2800.,  2900.,
                             3000.,  3100.,  3200.])
         angleSummit = array([92.6, 88.85, 85.35, 82.2, 79.15, 76.35,
                              73.7, 70.7, 67.95, 65.25, 62.85, 60.35,
@@ -127,6 +129,7 @@ class stepperCmd():
         if self.lock.acquire():
             try:
                 if (self.debug): print "Closing socket ip %s"%self.ip
+                self.lw.write("Closing az/el socket ip %s "%self.ip)
                 self.s.close()
             except:
                 if (self.debug): print "%s socket ip is already closed"%self.ip
@@ -139,7 +142,7 @@ class stepperCmd():
         #self.getElPos()
 
     def slewMinEl(self):
-        self.slewEl(14.4)
+        self.slewEl(15.0)
 
     def convert_angle2stepEl(self, el):
         if self.lock.acquire():
@@ -155,9 +158,9 @@ class stepperCmd():
         Wrapper for stepMotorEl to allow us to send elevation commands 
         with elevation angle instead of steps
         """
-        if el < 14.3 or el > 91.00:
+        if el < 15.0 or el > 90.00:
             if (self.debug): 
-                print "Requested elevation is outside elevation range [14.3-91 deg], doing Nothing"
+                print "Requested elevation is outside elevation range [15.0-90 deg], doing Nothing"
                 self.lw.write('Requested elevation is outside of elevation range [`14.3-91 deg]')
         else:
             steps = self.convert_angle2stepEl(el)
@@ -177,9 +180,9 @@ class stepperCmd():
             print "Nsteps must be a string integer"
             return 1
 
-        if int(Nsteps) > 3200 or int(Nsteps) < 0:
+        if int(Nsteps) > 2900 or int(Nsteps) < 0:
             if int(Nsteps) != -9999:
-                self.lw.write("Nsteps must be between 0 and 3200. Review things")
+                self.lw.write("Nsteps must be between 0 and 2900. Review things")
                 return 1
         self.getElPos()
         if self.lock.acquire():
@@ -247,7 +250,7 @@ class stepperCmd():
     def homeAz(self):
         WaitTime = 40
         self.lw.write("Az homing move: Waiting Max %2.0fs for move to finish"%WaitTime)
-        azPos0 =  self.getAzPos()
+        azPos0 = self.getAzPos()
         self.stepMotorAz('-9999')
         timeCount = 0
         azPos = self.getAzPos()
@@ -339,6 +342,7 @@ class stepperCmd():
         """
         """
         if self.lock.acquire():
+            self.lw.write("Stopping az motor rotation now")
             self.s.send('b')
             self.lock.release()
         else:

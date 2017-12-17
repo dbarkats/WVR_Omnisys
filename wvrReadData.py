@@ -15,7 +15,7 @@ class wvrReadData(initialize):
 
     def readPIDTempsFile(self, fileList, verb=True):
         
-
+        conv = {0: lambda s: datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f')}
         fileList = au.aggregate(fileList)        
         fl=[]
         for f in fileList:
@@ -35,21 +35,23 @@ class wvrReadData(initialize):
                 if verb: print "Reading %s"%filename
                 if self.unit == 'wvr1' :
                     if datestr2num(date) < datestr2num('20161215'):
-                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False)
+                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', invalid_raise = False, converters=conv)
                     else:
-                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8,f8,f8,f8,f8', invalid_raise = False, skip_header=0, skip_footer=0, usecols=range(24))
+                        data= genfromtxt(self.dataDir+filename, delimiter='',dtype=None, invalid_raise = False, skip_header=1, converters=conv)
                 elif self.unit == 'wvr2':
-                    data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8', invalid_raise = False)
+                    data= genfromtxt(self.dataDir+filename, delimiter='',dtype='S26,i8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,i8,i8,i8,f8', invalid_raise = False, converters=conv)
                 d.append(data)
 
+        nfields = size(data.dtype.fields.keys())
         if size(d) == 0: return 0,0,0,0,0,0
         d = concatenate(d,axis=0)
-        utTime = []
-        for tstr in d['f0']:
-            #try:
-            utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
-            #except:
-            #    utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+
+        utTime = d['f0']
+        #for tstr in d['f0']:
+        #    #try:
+        #      utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
+        #    #except:
+        #    #    utTime.append(datetime.strptime(tstr,'%Y-%m-%dT%H:%M:%S.%f'))
         sample=arange(size(d))  # was 'f1'
         t0=d['f2']
         input=d['f3']
@@ -65,18 +67,21 @@ class wvrReadData(initialize):
         t10=d['f13']
         t11=d['f14']
 
-        if size(d.dtype.fields.keys()) > 16:  # added for WVR#2 in June 2016.
+        if nfields > 16:  # added for WVR#2 in June 2016.
             outputDC = d['f15']
             stateRelayIn=d['f16']
             stateRelayOut=d['f17']
             stateRelayAz=d['f18']
             outputAz=d['f19']
-            shape(outputDC)
-            shape(outputAz)
             output =  vstack([outputDC, stateRelayIn, stateRelayOut, stateRelayAz, outputAz]).T 
         else:
             output= vstack([d['f15']]).T
         temps=vstack([t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11]).T
+
+        if nfields > 20:   # added Dec 2017 for WVR1 accelerometer
+            tilt = vstack([d['f20'],d['f21'],d['f22'],d['f23']]).T #x,y,z,temp tilt
+        else:
+            tilt = None
 
         utwx, wx = self.readWxFile(fileList,verb=verb)
         if utwx == None:
@@ -84,7 +89,7 @@ class wvrReadData(initialize):
         else:
             wxnew = au.interpDatetime(utTime, utwx, wx)
         
-        return utTime, sample, wxnew, temps, input, output
+        return utTime, sample, wxnew, temps, input, output, tilt
 
     def readFastFile(self,fileList,verb=True):
 
@@ -105,6 +110,7 @@ class wvrReadData(initialize):
             else:
                 if verb: print "Reading %s (%d of %d)"%(filename,k+1,nfiles)
                 e = genfromtxt(self.dataDir+filename,delimiter='', skip_header=3,names=True,dtype="S26,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f",invalid_raise = False)
+
                 d.append(e)
         d = concatenate(d,axis=0)
 
