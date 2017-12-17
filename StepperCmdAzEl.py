@@ -255,14 +255,15 @@ class stepperCmd():
 
     def homeAz(self):
         self.lw.write("Homing Az stepper motor")
-        WaitTime = 110
+        WaitTime = 40
         self.lw.write("Az homing move: Waiting Max %2.0fs for move to finish"%WaitTime)
+        timeCount = 0
         azPos0 = self.getAzPos()
         self.stepMotorAz('-9999')
-        timeCount = 0
-        time.sleep(0.1)
+        time.sleep(0.5)
         azPos = self.getAzPos()
-        self.lw.write(azPos)
+        deltaAzPos = azPos - azPos0
+        self.lw.write("Az homing in Progress: Az:%.2f, DeltaAz: %3.2f, Time:%.1f"%(azPos, deltaAzPos, timeCount))
         while((azPos != 0) and (timeCount < WaitTime)):
             azPos = self.getAzPos()
             deltaAzPos = azPos - azPos0

@@ -9,10 +9,9 @@ This script will save 1 set of files:
 """
 import os,sys
 from wvrRegList import *
-import SerialPIDTempsReader_v2 as sr
+import SerialPIDTempsReader_v3 as sr
 import wvrComm
-import wvrPeriComm
-import StepperCmd
+import StepperCmdAzEl
 import wvrDaq
 import time
 import datetime
@@ -96,23 +95,21 @@ else:
     lw.write("ERROR: WVR failed to go to Operational. Check low level errors")
     sys.exit()
 
-lw.write("create wvrAz object")
-wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
-lw.write("create wvrEl object")
-wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
+lw.write("create wvrAzEl object")
+wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
 
 if wvrOnly:
-    lw.write("Resetting and Homing Az stage")
-    wvrAz.stopRotation()
-    wvrAz.resetAndHomeRotStage()
+    lw.write("Homing Az stepper motor")
+    wvrAE.stopAzRot()
+    time.sleep(1)
+    wvrAE.homeAz()
 
     lw.write("Homing El stepper motor")
-    wvrEl.initPort()
-    wvrEl.home()
+    wvrAE.homeEl()
     wvrEl.slewEl(El)
 
 lw.write("Create wvrDaq object")
-daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl, 
+daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, azelstep=wvrAE, 
                     reg_fast=reg_fast, reg_slow=reg_slow, reg_stat=reg_stat,
                     slowfactor=slowfactor, comments="wvr Noise staring observation", 
                     prefix = prefix, debug=False)
@@ -129,13 +126,10 @@ time.sleep(1)
 
 lw.write("start wvr data acquisition in the foreground")
 (nfast, nslow) = daq.recordData(duration)
+lw.write("end of wvr data acquisition in the foreground")
 
 # Clean up
 lw.close()
-if wvrOnly:
-    wvrEl.closePort()
-    wvrAz.closeSerialPort()
-
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with %s script at %s \n"%(script,ts)
 sys.stdout.flush()

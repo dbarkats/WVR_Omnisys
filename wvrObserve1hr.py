@@ -47,7 +47,7 @@ if __name__ == '__main__':
     
     parser.add_option("-d",
                       dest="duration",
-                      default = 3400,
+                      default = 3300,
                       type= int,
                       help="-d, duration of scanAz observation phase in seconds. Default = 3400s")
 
@@ -195,7 +195,7 @@ time.sleep(1)
 
 if not(options.skipAzScan):
     lw.write("start az rotation.")
-    lw.write("Doing %d turns, %d deg at 12deg/s: %d seconds"%(NazTurns,Nazturns*360.,azScanningDuration))
+    lw.write("Doing %d turns, %d deg at 12deg/s: %d seconds"%(NazTurns,NazTurns*360.,azScanningDuration))
     wvrAE.setLogger(lw)
     wvrAE.slewAz(NazTurns*360.)
 
@@ -206,7 +206,6 @@ lw.write("end of wvr data acquisition in the foreground")
 # Clean up.
 #wvrAE.closePort()
 lw.close()
-
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with scanAz part, finished with script at %s \n"%(ts)
 sys.stdout.flush()

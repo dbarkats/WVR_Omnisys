@@ -13,12 +13,12 @@ from initialize import initialize
 
 class wvrPlot(initialize):
     
-    def __init__(self, unit=None):
+    def __init__(self, unit=None, verb=True):
         """
         """       
-        initialize.__init__(self, unit)
+        initialize.__init__(self, unit, verb=verb)
 
-        self.wvrR = wrd.wvrReadData(self.unit)
+        self.wvrR = wrd.wvrReadData(self.unit, verb=verb)
     
     def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
 

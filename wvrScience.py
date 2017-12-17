@@ -32,13 +32,13 @@ class wvrScience(initialize):
     '''
 
     
-    def __init__(self, unit=None):
+    def __init__(self, unit=None, verb=True):
         '''
 
         
         '''
-        initialize.__init__(self, unit)
-        self.wvrR = wrd.wvrReadData(self.unit)
+        initialize.__init__(self, unit, verb=verb)
+        self.wvrR = wrd.wvrReadData(self.unit, verb=verb)
 
     def plotAtmogram(self, fileList, inter=False,verb=True, fitphase = True):
         '''
