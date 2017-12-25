@@ -15,6 +15,6 @@ WEBDIR="bicep@bicep.usap.gov:/home/bicep/public_html/calibration/wvr/wvr1_status
 
 STATUSFILE="$(date --utc +"%Y%m%d_%H%M%S")_status.txt"
 cd "${DAQDIR}/status"
-ssh ${DAQLOGIN} "${DAQSTATUS}" > ${STATUSFILE}
+ssh ${DAQLOGIN} "${DAQSTATUS}" > ${STATUSFILE} 2>&1
 cp ${STATUSFILE} status.txt
 rsync -au status.txt ${STATUSFILE} "${WEBDIR}"
