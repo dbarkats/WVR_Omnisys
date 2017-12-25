@@ -270,20 +270,32 @@ class reduc_wvr_pager(initialize):
         cwd = os.getcwd()
         os.chdir(self.dataDir)
         fl=sort(glob.glob('%slog*'%nowm1hr))
-        lastFile = fl[-1]
-        f = open(lastFile,'r')
-        lines = f.readlines()
-        f.close()
-        dA=[]
-        for line in lines:
-            if 'DeltaAz' in line:
-                dA.append(float(line.split('DeltaAz:')[1].split(',')[0]))
-        if size(dA) == 1:
-            idx = -1
+        dA = []
+        for lastFile in fl[::-1]:
+            f = open(lastFile,'r')
+            lines = f.readlines()
+            f.close()
+            dA=[]
+            for line in lines:
+                if 'DeltaAz' in line:
+                    dA.append(float(line.split('DeltaAz:')[1].split(',')[0]))
+
+            if size(dA) == 0:
+                if verb:
+                    print "AzSkipCheck: no az homing in %s" % lastFile
+                continue
+            else:
+                break
+
+        if size(dA) == 0:
+            passfail = "MISSING AZ HOME"
+            dA = (NaN,)
+            idx = 0
         else:
-            idx = -2
-        passfail = (dA[idx] == 0) or ((dA[idx] > 359) and (dA[idx] < 361))
-        print "AzSkipCheck: deltaAz:%.1fdeg, File: %s" % (dA[idx], lastFile)
+            idx = -2 if size(dA) > 1 else -1
+            passfail = (dA[idx] == 0) or ((dA[idx] > 359) and (dA[idx] < 361))
+
+        print "AzSkipCheck: deltaAz: %.1f deg, File: %s" % (dA[idx], lastFile)
         self.passfailmsg("AzSkipCheck", passfail)
         os.chdir(cwd)
 
