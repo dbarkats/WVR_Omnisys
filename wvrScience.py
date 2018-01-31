@@ -20,13 +20,10 @@ from initialize import initialize
 #}
 #scipy.io.savemat('test.mat', data)
         
-
 class wvrScience(initialize):
     '''
 
     '''
-
-    
     def __init__(self, unit=None):
         '''
 
@@ -39,7 +36,7 @@ class wvrScience(initialize):
         '''
         Created by NL 20161010
         Re-written by dB 20161110
-        TODO: Store data in  pickle as intermediate product
+        TODO: Store data in pickle as intermediate product
 
         '''
         if inter:
@@ -49,12 +46,12 @@ class wvrScience(initialize):
             
         nfiles = size(fileList)
         pcoef= {0:None, 1:None, 2:None, 3:None} # initialize fit coef for all 4 channels
-        D = {0:None, 1:None, 2:None, 3:None}
-        Dres = {0:None, 1:None, 2:None, 3:None}
-        Dbl = {0:None, 1:None, 2:None, 3:None}
+        D = {0:None, 1:None, 2:None, 3:None}    # atmogram of raw data
+        Dres = {0:None, 1:None, 2:None, 3:None} # atmogram of residual
+        Dbl = {0:None, 1:None, 2:None, 3:None}  # atmogram of baseline fit
         c = ['b','r','g','m']
 
-        if verb: print "Loading %d slow files"%nfiles
+        if verb: print "Loading %d slow files:"%nfiles
         utslow,tslow,d,azslow,elslow,tsrc = self.wvrR.readSlowFile(fileList)
         nchan = shape(tsrc)[1]
         dres = zeros(shape(tsrc))  # initialize residuals on the 4 tsrc
@@ -208,8 +205,6 @@ class wvrScience(initialize):
         
         return waz, D, Dres, Dbl, pcoef
 
- 
-
     ##############################
     #### Helper functions and fitting functions
     
@@ -218,8 +213,6 @@ class wvrScience(initialize):
         function to write out a tilt model which saves for each tag (scanAz tags mostly)
           tag,  datetime, thethaz, and eventually the amplitude of the tilt ( so we don't have to fit the ampltude either)
         '''
-
-
         # get a file list of azscan
         # find the  amp ,ang and offset for each of those 1 hour tags. using testAngFit
         # need to test a new fit than just sinwave but not in testAngFit
@@ -230,9 +223,7 @@ class wvrScience(initialize):
             def __init__(self):
                 self.num = []
                 self.s = []
-                self.e = []
-
-        
+                self.e = [] 
     
     def findAngles(self,tilt, ang):
         """
@@ -307,12 +298,15 @@ class wvrScience(initialize):
 
         return amp,ang,off
 
-
     def findScans(self, az):
         '''
         The az reading is in degrees traveled from home position since beginning of observation.
-        Wrap this using divmod( , 36)
-        Also also enumerate each 360-degree scan and return an fs structure with the scannum, start index, end index of each scan
+        waz: Wrapped azimuth (using divmod( , 360)) from 0-360
+        Also also enumerate each 360-degree scan and return an fs structure
+        - scannum,
+        - start index,
+        - end index of each scan
+
         '''
         class stru:
             def __init__(self):
@@ -331,7 +325,6 @@ class wvrScience(initialize):
         fs.e = e
 
         #TODO: remove first and last scan ?
-        
         return az, fs
 
 
@@ -443,9 +436,7 @@ class wvrScience(initialize):
             params0 = fit
             
         return y, pcoef, b
-        
-
-       
+           
     def sliceFitSinusoidal_LS(self, az360, data, uttime, dt):
         '''
         Slice up the data into time bins of size dt and fit a cosine function to the data points in that bin.

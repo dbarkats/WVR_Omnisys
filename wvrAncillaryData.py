@@ -29,10 +29,10 @@ class wvrAncillaryData():
         else:
             dt = datetime.datetime.strptime(date,'%Y%m%d')
         jan1 = datetime.datetime(dt.year,1,1)
-        doy =  (dt-jan1).days +1
+        doy =  (dt-jan1).days + 1
 
         for i in range(0,24):    
-            fname = '%s%s%02d00Health.txt'%(dt.year,doy,i)
+            fname = '%s%03d%02d00Health.txt'%(dt.year,doy,i)
             outname = '%s_%02d0000_MMCR_Tilt.txt'%(dt.strftime('%Y%m%d'),i)
             #check if file exists
             if os.path.isfile(self.dataDir+outname): continue

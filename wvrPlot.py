@@ -22,18 +22,32 @@ class wvrPlot(initialize):
     
     def plotPIDTemps(self, fileList, fignum=1, inter=False, autoXrange=False,verb=True):
 
-        #TODO: add deglitching based on outer 4 temp channels
-        
-        legend_pole=['Inside Air','PID Input','Op-amp','Gnd plate',
+
+        timefmt = DateFormatter('%H:%M:%S')
+        nfiles = size(fileList)
+        if verb: print "Loading %d PIDTemps files"%nfiles
+        ut, sample, wx, temps, input, output = self.wvrR.readPIDTempsFile(fileList)
+        if size(sample) <= 30: return
+
+        legend_pole16=['Inside Air','PID Input','Op-amp','Gnd plate',
                      'heat exh','24V PS','E pink foam',
                      'Arduino','El mtr','48V PS',
-                     'Az stage', 'Outside 1','Outside 2']
+                     'Az stage', 'Outside 1','Outside 2'] 
+
+        legend_pole17=['Inside Air','PID Input','Op-amp','El lim sw',
+                     'heat exh','24V PS','Up bspl1',
+                     'Arduino','El mtr','48V PS',
+                     'Az stage', 'Outside 1','N/A'] 
+
         legend_summit=['Inside Air','PID Input','Op-amp','El lim sw',
                        'heat exh','24V PS','E foam',
                        'Arduino','El mtr','48V PS',
                        'Az stage', 'Up bspl','Outside 1']
         if self.unit == 'wvr1':
-            leg = legend_pole
+            if ut[0].year <= 2016:
+                leg = legend_pole16
+            else:
+                leg = legend_pole17
         elif self.unit == 'wvr2':
             leg = legend_summit
         if verb: print "Making plots for location: %s"%self.unit
@@ -41,12 +55,6 @@ class wvrPlot(initialize):
             ion()
         else:
             ioff()
-
-        timefmt = DateFormatter('%H:%M:%S')
-        nfiles = size(fileList)
-        if verb: print "Loading %d PIDTemps files"%nfiles
-        ut, sample, wx, temps, input, output = self.wvrR.readPIDTempsFile(fileList)
-        if size(sample) <= 30: return
         
         fname = fileList[0].split('_')
         if size(fname)<3:
@@ -55,7 +63,7 @@ class wvrPlot(initialize):
             obsTyp = fname[2].split('.')[0]
         if nfiles > 1:
             figsize= (36,12)
-            leg_loc =(1.05, 1.03) 
+            leg_loc =(1.08, 1.03) 
             savefilename= '%s_2400.txt'%fname[0]
             trange=[ut[0].replace(hour=0,minute=0,second=0),
                     ut[-1].replace(hour=23,minute=59,second=59)]
@@ -132,19 +140,22 @@ class wvrPlot(initialize):
             subplots_adjust(hspace=0.01)
 
         subpl = subplot(7,1,5)
-        for i in range(1,11):
+        for i in range(1,10):
             plot_date(ut, au.smooth(temps[:,i],20),fmt='-')
         ylabel('Box Temps [C]')
         grid(color='gray')
         ylim([0,35])
         subpl.set_xticklabels('')
         subpl.set_xlim(trange)
-        legend(leg[2:12],bbox_to_anchor=leg_loc, prop={'size':10})
+        legend(leg[2:11],bbox_to_anchor=leg_loc, prop={'size':10})
                     
         subpl=subplot(7,1,6)
         legw=[]
         if self.unit == 'wvr1':
-            outtemp = [10,11]
+            if ut[0].year <= 2016:
+                outtemp = [10,11]
+            else:
+                outtemp = [10]
         elif self.unit == 'wvr2':
             outtemp = [11]
             if wx is not None:
@@ -185,7 +196,6 @@ class wvrPlot(initialize):
         suptitle(title,y=0.95, fontsize=24)
         if verb: print "Saving %s.png"%title
         savefig(title+'.png')
-
 
         if not inter:
             close('all')
@@ -747,7 +757,7 @@ class wvrPlot(initialize):
         s = nanstd(wx['tempC'])
         grid(color='gray')
         ylabel('Wx Temp [C]')
-        yl=ylim([-60,0])
+        yl=ylim([-80,0])
         xl=xlim()
         cap = 'Temp: %2.1f +- %2.1fC'%(m,s)
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
@@ -761,7 +771,7 @@ class wvrPlot(initialize):
         s = nanstd(wx['rh'][q])
         grid(color='gray')
         ylabel('Wx Rh [%]')
-        yl=ylim([0,100])
+        yl=ylim([0,105])
         cap = 'Rh: %2.1f +- %2.1f %%'%(m,s)
         text(0.05,0.9,cap,transform=sp.transAxes,fontsize=14)
 
