@@ -57,7 +57,10 @@ class reduc_wvr_pager(initialize):
             fileListWx = glob.glob('*_wx_keck.txt')
         elif type == 'NOAA':
             os.chdir(self.dataDir)
-            fileListWx = glob.glob('*_Wx_Summit_NOAA.txt')
+            if self.unit == 'wvr2':
+                fileListWx = glob.glob('*_Wx_Summit_NOAA.txt')
+            elif self.unit == 'wvr1':
+                 fileListWx = glob.glob('*_Wx_Spo_NOAA.txt')
         os.chdir(cwd)
 
         # filter fileList by dates
@@ -149,12 +152,13 @@ class reduc_wvr_pager(initialize):
                         os.system('tar -xzvf %s'%f) # untar files
                     else:
                       print "Missing: %s" %f  
-                if not os.path.exists('%s0000_MMCR_Tilt.txt'%f[0:11]):
-                    if os.path.exists('%s_MMCR_Tilt.tar.gz'%f[0:8]):
-                        print "Untarring: '%s_MMCR_Tilt.tar.gz"%f[0:8]
-                        os.system('tar -xzvf %s_MMCR_Tilt.tar.gz'%f[0:8])
-                    else:
-                        print "Missing %s_MMCR_Tilt.tar.gz"%f[0:8]
+                if self.unit == 'wvr2':      
+                    if not os.path.exists('%s0000_MMCR_Tilt.txt'%f[0:11]):
+                        if os.path.exists('%s_MMCR_Tilt.tar.gz'%f[0:8]):
+                            print "Untarring: '%s_MMCR_Tilt.tar.gz"%f[0:8]
+                            os.system('tar -xzvf %s_MMCR_Tilt.tar.gz'%f[0:8])
+                        else:
+                            print "Missing %s_MMCR_Tilt.tar.gz"%f[0:8]
                     
         os.chdir(cwd)
 
