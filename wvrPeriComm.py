@@ -190,7 +190,7 @@ class wvrPeriComm():
         if (not self.isHomed) or (abs(currentAzPos) > 360):
             self.resetAndHomeRotStage()
             currentAzPos = 0
-        slewSpeed = 20
+        slewSpeed = 10
         moveDist = az - currentAzPos
         timedist = float(moveDist / slewSpeed)
         self.lw.write("Slewing from %s to %s at %d deg/s;"%(currentAzPos, az, slewSpeed))

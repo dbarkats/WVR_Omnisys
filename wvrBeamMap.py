@@ -13,10 +13,10 @@ import os, sys
 from wvrRegList import *
 import wvrComm
 import wvrPeriComm
-import StepperCmd
+import StepperCmdAzEl
 import wvrDaq
 import datetime
-import SerialPIDTempsReader_v2 as sr
+import SerialPIDTempsReader_v3 as sr
 import threading
 import logWriter
 from pylab import *
@@ -35,37 +35,31 @@ if __name__ == '__main__':
                       default=False,
                       help="-v option will print to Logging to screen in addition to file. Default = False")
     
-    parser.add_option("-s",
-                      dest="speed",
-                      default = 3.0,
-                      type= float,
-                      help="-s, rotation velocity in deg/s to perform the az scanning at. Default: 3.0 deg/s")
-    
 (options, args) = parser.parse_args()
-
 #### DEFINE VARIABLES #########
 script = "wvrBeamMap.py"
-azScanningSpeed = options.speed # in deg/s
-minScanEl = 19 # in deg
-maxScanEl = 29 # in deg. Must be greater than minScanEl
+azScanningSpeed = 12 # default Arduino hard-wired deg/s
+minScanEl = 20 # in deg
+maxScanEl = 28 # in deg. Must be greater than minScanEl
 deltaEl = 0.5 # in deg
-Nsteps = int((maxScanEl - minScanEl)/deltaEl)
+Nsteps = int((maxScanEl - minScanEl)/deltaEl +1)
 elSteps = minScanEl + arange(Nsteps)*deltaEl
 NscansPerElStep = 1
-oneStepAzScanningDuration =  NscansPerElStep * 360/azScanningSpeed
+oneStepAzScanningDuration =  4*(NscansPerElStep * 360/azScanningSpeed) + 12
 totalAzScanningDuration = oneStepAzScanningDuration * Nsteps
+NazTurns = floor(totalAzScanningDuration * 12.0/360.)
 
 print "Doing a BeamMap from EL=%2.1f to EL=%2.1f (%d el steps %2.2f each) with %d az scans per step"%(minScanEl, maxScanEl, Nsteps, deltaEl, NscansPerElStep)
 print "Total scanning time: %.1f secs"% totalAzScanningDuration
+
 # Common variables are defined in wvrRegList
 #############################################
-
 ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_scanAz_beamMap'
 lw = logWriter.logWriter(prefix, options.verbose)
 lw.write("Running %s"%script)
 
-# Also print to standard output file in case we get messages going to it
+# Print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
 sys.stdout.flush()
 
@@ -79,64 +73,63 @@ else:
     lw.write("ERROR: WVR failed to go to Operational. Check low level errors")
     sys.exit()
 
-lw.write("create PIDTemps object")
-rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
+lw.write("create wvrAzEl object")
+wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
 
-lw.write("create wvrAz object")
-wvrAz = wvrPeriComm.wvrPeriComm(logger=lw, debug=False)
+wvrAE.stopAzRot()
+time.sleep(1)
+wvrAE.homeAz()
 
-lw.write("Resetting and Homing Az stage")
-wvrAz.stopRotation()
-wvrAz.resetAndHomeRotStage()
-
-lw.write("create wvrEl object")
-wvrEl = StepperCmd.stepperCmd(logger=lw, debug=False)
-
-lw.write("Homing El stepper motor")
-wvrEl.initPort()
-wvrEl.home()
-wvrEl.slewEl(minScanEl)
+wvrAE.homeEl()
+lw.write("Done with homing El stepper motor")
+lw.write("Moving to MinScanEl")
+wvrAE.slewEl(minScanEl)
+lw.write("Done with Moving to MinScanEl")
 
 lw.write("Create wvrDaq object")
-daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, peri=wvrAz, elstep=wvrEl, 
+daq = wvrDaq.wvrDaq(logger=lw, wvr=wvrC, azelstep=wvrAE, 
                     reg_fast=reg_fast, reg_slow=reg_slow, reg_stat=reg_stat,
                     slowfactor=slowfactor, comments="Beam Map observation", 
                     prefix=prefix, debug=False)
 
+lw.write("create PIDTemps object")
+rsp = sr.SerialPIDTempsReader(logger=lw, plotFig=False, prefix=prefix, debug=False)
 lw.write("start PIDtemps acquisition in the background")
-pid_th = threading.Thread(target=rsp.loopNtimes, args=(totalAzScanningDuration,))
-pid_th.daemon = True
-pid_th.start()
+tPid1 = threading.Thread(target=rsp.loopNtimes, args=(totalAzScanningDuration +10,))
+tPid1.daemon = True
+tPid1.start()
+time.sleep(1)
 
 lw.write("start wvr data acquisition in the background")
-daq_th = threading.Thread(target=daq.recordData, args=(totalAzScanningDuration,))
-daq_th.daemon = True
-daq_th.start()
-
-lw.write("start Az rotation for %.1f sec"%(totalAzScanningDuration))
-wvrAz.startRotation(totalAzScanningDuration, azScanningSpeed)
+tDaq1 = threading.Thread(target=daq.recordData, args=(totalAzScanningDuration+10,))
+tDaq1.daemon = True
+tDaq1.start()
+time.sleep(2)
 
 azMax = 0
 for El in elSteps:
+    lw.write("Slewing to El:%.1f"%El)
+    wvrAE.slewEl(El)
+    time.sleep(1.0)
     azMax = azMax + NscansPerElStep*360
-    lw.write("start Az rotation at El=%.2f  for %.1f sec"%(El,oneStepAzScanningDuration))
-    wvrEl.slewEl(El)
-    time.sleep(1)
-    lw.write("Waiting until this Az scanning ends")
-    
-    while wvrAz.monitorAzPos() < azMax-1.0:
-        azPos = wvrAz.monitorAzPos()
-        print "Going to %d, current AZ: %f, EL:%f "%(azMax, azPos, El)  
+    wvrAE.slewAz(azMax)
+    lw.write("start Az rotation at El=%.1f for %.1f sec, until az=%.1f"%(El,oneStepAzScanningDuration, azMax))
+    #time.sleep(0.5)
+    azPos = wvrAE.monitorAzPos()
+    lw.write(azPos)
+    while azPos < azMax-0.1:
         time.sleep(2)
-
-#wait for daq_th thread to finish
-while(daq_th.isAlive()):
+        azPos = wvrAE.monitorAzPos()
+        elPos = wvrAE.monitorElPos()
+        print "Commanded Az:%d, current Az:%.2f, El:%.1f"%(azMax, azPos, elPos)  
+        lw.write("Commanded Az:%d, current Az:%.2f, El:%.1f "%(azMax, azPos, elPos))  
+        
+#wait for tdaq1 thread to finish
+while(tDaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
      time.sleep(10)
      
 # Clean up.
-wvrAz.closeSerialPort()
-wvrEl.closePort()
 lw.close()
 
 ts = time.strftime('%Y%m%d_%H%M%S')

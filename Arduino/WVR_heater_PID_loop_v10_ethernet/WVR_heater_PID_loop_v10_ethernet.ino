@@ -1,4 +1,5 @@
 /*
+ v10_ethernet. Same as v10 but can handle an ethernet shield and sends data  through socket internet.
  v10: re-written by Ethan to better deal with turn on and off of
   AC inner and outer heaters
   v9: preparing version for upgraded South Pole Unit. Added capability to
@@ -17,6 +18,7 @@
 
 #include <PID_v1.h>
 #include<Wire.h>
+#include <Ethernet2.h>
 
 // Define variables for the 6-axis acceleromter
 const int MPU_addr=0x68;
@@ -88,6 +90,12 @@ const int therm9 = A9;  //  AD590
 const int therm10 = A10; // AD590
 const int therm11 = A11; // AD590 or Vin from current sensing
 
+// Define Ethernet shield settings
+const int port = 4321;
+byte ip[] = {192,168,168,234};
+byte mac[] = {0x90, 0xA2, 0xDA, 0x10, 0xDE, 0xD6};
+EthernetServer server = EthernetServer(port);
+
 // the setup routine runs once when you press reset:
 void setup() {
   analogReadResolution(12);  // sets the analog input resolution to 12bits (10bits is default)
@@ -105,9 +113,9 @@ void setup() {
   Wire.write(0);
   Wire.endTransmission(true);
 
-  // initialize serial communication at 9600 bits per second:
-  SerialUSB.begin(9600);
-  // while(!SerialUSB.available());
+  // initialize ethernet communication
+  Ethernet.begin(mac, ip);
+  server.begin();
 
   //initialize the variables we're using
   delay(100);
@@ -235,51 +243,55 @@ void loop() {
     y = y -360.0;
 
   // print out the value you read:
-  SerialUSB.print(counter);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp0, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(Input, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp1, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp2, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp3, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp4, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp5, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp6, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp7, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp8, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(smoothedAzTemp, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(temp10, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(smoothedAzCurrent, 3);
-  SerialUSB.print("\t");
-  SerialUSB.print(OutputV, 3);
-  SerialUSB.print("\t");  
-  SerialUSB.print(stateRelayIn);
-  SerialUSB.print("\t");
-  SerialUSB.print(stateRelayOut);
-  SerialUSB.println("\t");
-  SerialUSB.print(stateRelayAzStage);
-  SerialUSB.print("\t");
-  SerialUSB.print(OutputAz);
-  SerialUSB.print("\t");
-  SerialUSB.print(x,3);
-  SerialUSB.print("\t");
-  SerialUSB.print(y,3);
-  SerialUSB.print("\t");
-  SerialUSB.print(z,3);
-  SerialUSB.print("\t");
-  SerialUSB.println(Tmp/340.00+36.53,3);
+  server.print(counter);
+  server.print("\t");
+  server.print(temp0, 3);
+  server.print("\t");
+  server.print(Input, 3);
+  server.print("\t");
+  server.print(temp1, 3);
+  server.print("\t");
+  server.print(temp2, 3);
+  server.print("\t");
+  server.print(temp3, 3);
+  server.print("\t");
+  server.print(temp4, 3);
+  server.print("\t");
+  server.print(temp5, 3);
+  server.print("\t");
+  server.print(temp6, 3);
+  server.print("\t");
+  server.print(temp7, 3);
+  server.print("\t");
+  server.print(temp8, 3);
+  server.print("\t");
+  server.print(smoothedAzTemp, 3);
+  server.print("\t");
+  server.print(temp10, 3);
+  server.print("\t");
+  server.print(smoothedAzCurrent, 3);
+  server.print("\t");
+  server.print(OutputV, 3);
+  server.print("\t");  
+  server.print(stateRelayIn);
+  server.print("\t");
+  server.print(stateRelayOut);
+  server.print("\t");
+  server.print(stateRelayAzStage);
+  server.print("\t");
+  server.print(OutputAz);
+  server.print("\t");
+  server.print(x,3);
+  server.print("\t");
+  server.print(y,3);
+  server.print("\t");
+  server.print(z,3);
+  server.print("\t");
+  server.print(Tmp/340.00+36.53,3);
+  // I'm writing in the carriage return as well as the new line because that
+  // is what the Arduino does with SerialUSB.println() (not sure if there would
+  // be compatibility issues otherwise. This can be removed, however.
+  server.println();
   delay(1000);        // delay in between reads for stability
 }
 

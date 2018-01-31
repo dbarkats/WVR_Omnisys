@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 from optparse import OptionParser
-import SerialPIDTempsReader_v2 as sr
+import SerialPIDTempsReader_v3 as sr
 import logWriter
 import time
 
@@ -12,8 +12,6 @@ if __name__ == '__main__':
     '''
     #options ....
     parser = OptionParser(usage=usage)
-    
-    
     
     parser.add_option("-p",
                       dest="plotFig",

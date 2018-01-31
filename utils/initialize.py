@@ -5,14 +5,14 @@ import socket
  
 class initialize():
     
-    def __init__(self, unit=None):
+    def __init__(self, unit=None, verb=True):
         '''
         
         Function to initialize directories to perform any kind of wvr reduction
         '''
-
         self.host = socket.gethostname()
         self.home = os.getenv('HOME')
+        self.verb = verb
 
         if unit == None:
             if self.host.startswith('wvr2'):
@@ -30,7 +30,7 @@ class initialize():
             
             
     def setWvrUnit(self,unit):
-        print "### Analyzing unit %s ..."%unit
+        if self.verb: print "### Analyzing unit %s ..."%unit
         self.unit = unit
         self.setDirs()
 
@@ -38,4 +38,4 @@ class initialize():
 
         self.reducDir = self.home+'/%s_reducplots/'%self.unit
         self.dataDir = self.home+'/%s_data/'%self.unit
-        self.wxDir = '/n/bicepfs2/keck/wvr_products/wx_reduced/'
+        self.wxDir = '/n/holylfs/LABS/kovac_lab/keck/wvr_products/wx_reduced/'
