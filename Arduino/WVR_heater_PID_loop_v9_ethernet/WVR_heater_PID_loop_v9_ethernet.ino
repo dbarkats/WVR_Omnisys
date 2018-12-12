@@ -167,7 +167,7 @@ void loop() {
   float temp11 = analogRead(therm11) * 3.3 / 4095.0 * 100.0 - 273.15; //
 
   // smooth the sensors I want to PID on.
-  smoothedAirTemp =  smooth(temp0, 0.90, smoothedAirTemp);
+  smoothedAirTemp = smooth(temp0, 0.90, smoothedAirTemp);
   smoothedAzTemp =  smooth(temp9, 0.90, smoothedAzTemp);
  
   Input = smoothedAirTemp;

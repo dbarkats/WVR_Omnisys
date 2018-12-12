@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 """
-
 Wrapper script to acquire perform a wvrBeam map
  - define all variables at the top.
  - create daq, az stage, el stage , PIDTemps objects
@@ -39,14 +38,14 @@ if __name__ == '__main__':
 #### DEFINE VARIABLES #########
 script = "wvrBeamMap.py"
 azScanningSpeed = 12 # default Arduino hard-wired deg/s
-minScanEl = 20 # in deg
-maxScanEl = 28 # in deg. Must be greater than minScanEl
+minScanEl = 19 # in deg
+maxScanEl = 27 # in deg. Must be greater than minScanEl
 deltaEl = 0.5 # in deg
 Nsteps = int((maxScanEl - minScanEl)/deltaEl +1)
 elSteps = minScanEl + arange(Nsteps)*deltaEl
 NscansPerElStep = 1
-oneStepAzScanningDuration =  4*(NscansPerElStep * 360/azScanningSpeed) + 12
-totalAzScanningDuration = oneStepAzScanningDuration * Nsteps
+oneStepAzScanningDuration =  3.5*(NscansPerElStep * 360/azScanningSpeed) + 12
+totalAzScanningDuration = int(oneStepAzScanningDuration * Nsteps)
 NazTurns = floor(totalAzScanningDuration * 12.0/360.)
 
 print "Doing a BeamMap from EL=%2.1f to EL=%2.1f (%d el steps %2.2f each) with %d az scans per step"%(minScanEl, maxScanEl, Nsteps, deltaEl, NscansPerElStep)
@@ -58,6 +57,9 @@ ts = time.strftime('%Y%m%d_%H%M%S')
 prefix = ts+'_scanAz_beamMap'
 lw = logWriter.logWriter(prefix, options.verbose)
 lw.write("Running %s"%script)
+
+lw.write("Doing a BeamMap from EL=%2.1f to EL=%2.1f (%d el steps %2.2f each) with %d az scans per step"%(minScanEl, maxScanEl, Nsteps, deltaEl, NscansPerElStep))
+lw.write("Total scanning time: %.1f secs"% totalAzScanningDuration)
 
 # Print to standard output file in case we get messages going to it
 print "Starting %s at %s"%(script,ts)
@@ -130,8 +132,8 @@ while(tDaq1.isAlive()):
      time.sleep(10)
      
 # Clean up.
+wvrAE.closePort()
 lw.close()
-
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with %s script, finished with script at %s"%(script,ts)
 

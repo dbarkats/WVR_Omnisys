@@ -111,30 +111,37 @@ class stepperCmd():
         
         """
         if self.lock.acquire():
+            if (self.debug): print "Opening socket ip %s"%self.ip
+            self.lw.write("Opening az/el socket ip %s "%self.ip)
             try:
-                if (self.debug): print "Opening socket ip %s"%self.ip
-                self.lw.write("Opening az/el socket ip %s "%self.ip)
                 self.s = S.Socket(S.socket.AF_INET, S.socket.SOCK_STREAM)
+            except S.socket.error, e:
+                print "Error creating socket: %s" % e
+                self.lock.release()
+                sys.exit(1)
+            try:
                 self.s.connect((self.ip,self.port))
-                status = 0
-            except:
+            except socket.error, e:
                 self.lw.write('Cannot open socket ip: %s at port %d'%(self.ip,self.port))
+                self.lw.write('Connection error: %s'%e)
                 if self.debug: print 'Cannot open socket ip: %s at port %d'%(self.ip,self.port)
-                
-                status = 2
+                if self.debut: print 'Connection error: %s'%e
+                self.lock.release()
+                sys.exit(1)
             self.lock.release()
         else:
             print "could not acquire lock (StepperCmdAzEl.openPort)"
-            status = 3
-        return status
+        return 
 
     def closePort(self):
         if self.lock.acquire():
             try:
                 if (self.debug): print "Closing socket ip %s"%self.ip
                 self.lw.write("Closing az/el socket ip %s "%self.ip)
+                self.s.shutdown(2)
                 self.s.close()
             except:
+                self.lw.write('%s socket ip is already closed'%self.ip)
                 if (self.debug): print "%s socket ip is already closed"%self.ip
             self.lock.release()
         else:
@@ -255,7 +262,8 @@ class stepperCmd():
 
     def homeAz(self):
         self.lw.write("Homing Az stepper motor")
-        WaitTime = 40
+        WaitTime = 40  # for normal observing speed of 12deg/s
+        #WaitTime = 120 # for beam mapping speeds at 3.5deg/s
         self.lw.write("Az homing move: Waiting Max %2.0fs for move to finish"%WaitTime)
         timeCount = 0
         azPos0 = self.getAzPos()
@@ -294,7 +302,7 @@ class stepperCmd():
     def slewAz(self, az):
         """
         wrapper command  for stepMotorAz 
-        az is angle in degres(float)
+        az is angle in degrees(float)
         converts from angle to steps using convert_angle2stepAz
         calls stepMotorAz
         """

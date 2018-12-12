@@ -21,7 +21,7 @@ if __name__ == '__main__':
                       dest = "verbose",
                       default=False,
                       action= "store_true",
-                      help="-v,turn verbosity on")
+                      help="-v, turn verbosity on")
 
     (options, args) = parser.parse_args()
     verb = options.verbose

@@ -157,8 +157,8 @@ class wvrComm():
         """
         rid = SET_CAL_REPRG[0]
         # check tftp server is running
-        if self.checkTftpServer(): 
-            return
+        #if self.checkTftpServer(): 
+        #    return
         if calFilename == '':
             print "ERROR: You must specify a filename you want to download to the WVR"
             return
@@ -178,8 +178,8 @@ class wvrComm():
             - tftp server should be running
         """
         # check tftp server is running
-        if self.checkTftpServer(): 
-            sys.exit()
+        #if self.checkTftpServer(): 
+        #    sys.exit()
 
         rid = SET_CAL_UPLOAD[0]
         serverIP = self.wvrTftpServer
