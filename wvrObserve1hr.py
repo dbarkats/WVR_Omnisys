@@ -160,13 +160,13 @@ while(tdaq1.isAlive()):
      lw.write("Waiting for previous recordData thread to finish")
      time.sleep(5)
 
-if options.onlySkydip:
-    ts = time.strftime('%Y%m%d_%H%M%S')
-    lw.write("Finished skidip, ending script now at %s"%ts)
-    lw.close()
-    wvrAE.closePort()
-    exit()
+ts = time.strftime('%Y%m%d_%H%M%S')
+wvrAE.closePort()
+lw.write("Finished skidip, moving on to scanAz now at %s"%ts)
 lw.close()
+if options.onlySkydip:
+    lw.write("Finished skidip, ending script now at %s"%ts)
+    sys.exit()
 
 #lw.write("Joining thread")
 #tPid1.join(timeout=30)
@@ -180,10 +180,14 @@ lw = logWriter.logWriter(prefix, options.verbose)
 print "Done with skyDip part, moving on to scanAz at %s"%(ts)
 sys.stdout.flush()
 
-lw.write("Updating wvrDaq object with az scan parameters")
-daq.setPrefix(prefix)
-daq.setComments('Az Scanning Observation')
-daq.setLogger(lw)
+lw.write("create new wvrAzEl object for scanAz")
+wvrAE = StepperCmdAzEl.stepperCmd(logger=lw, debug=False)
+
+lw.write("Create new wvrDaq object for scanAz")
+daq = wvrDaq.wvrDaq(logger=lw,  wvr=wvrC, azelstep=wvrAE, 
+                    reg_fast=reg_fast, reg_slow=reg_slow, reg_stat=reg_stat,
+                    slowfactor=slowfactor, comments="As Scanning Observation", 
+                    prefix = prefix, debug=False)
 
 lw.write("create PIDTemps object")
 rsp = sr.SerialPIDTempsReader(logger = lw, plotFig=False, prefix=prefix, debug=False)
@@ -196,7 +200,6 @@ time.sleep(1)
 if not(options.skipAzScan):
     lw.write("start az rotation.")
     lw.write("Doing %d turns, %d deg at 12deg/s: %d seconds"%(NazTurns,NazTurns*360.,azScanningDuration))
-    wvrAE.setLogger(lw)
     wvrAE.slewAz(NazTurns*360.)
 
 lw.write("start wvr data acquisition in the foreground")
@@ -204,7 +207,7 @@ lw.write("start wvr data acquisition in the foreground")
 lw.write("end of wvr data acquisition in the foreground")
 
 # Clean up.
-#wvrAE.closePort()
+wvrAE.closePort()
 lw.close()
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with scanAz part, finished with script at %s \n"%(ts)

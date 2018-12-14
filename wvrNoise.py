@@ -102,8 +102,9 @@ if wvrOnly:
     wvrAE.stopAzRot()
     time.sleep(1)
     wvrAE.homeAz()
-
     wvrAE.homeEl()
+    lw.write("Done with homing El stepper motor")
+    lw.write("Moving to El=%.1f"%El)
     wvrAE.slewEl(El)
 
 lw.write("Create wvrDaq object")
@@ -127,6 +128,7 @@ lw.write("start wvr data acquisition in the foreground")
 lw.write("end of wvr data acquisition in the foreground")
 
 # Clean up
+wvrAE.closePort()
 lw.close()
 ts = time.strftime('%Y%m%d_%H%M%S')
 print "Done with %s script at %s \n"%(script,ts)

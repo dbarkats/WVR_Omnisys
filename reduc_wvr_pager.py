@@ -118,7 +118,7 @@ class reduc_wvr_pager(initialize):
         fileList = glob.glob('*%s.tar.gz'%typ)
 
         # remove '2016wvrLog.tar.gz', remove daily MMCR files
-        removeFiles = ['2016wvrLog.tar.gz','2017wvrLog.tar.gz','2017_Wx_Spo_NOAA.tar.gz', 'MMCR']
+        removeFiles = ['2016wvrLog.tar.gz','2017wvrLog.tar.gz','2018wvrLog.tar.gz','2017_Wx_Spo_NOAA.tar.gz', 'MMCR']
         for file in removeFiles:
             fileList = filter(lambda f: (file not in f),fileList)
 
@@ -297,11 +297,12 @@ class reduc_wvr_pager(initialize):
             idx = 0
         else:
             idx = -2 if size(dA) > 1 else -1
-            passfail = (dA[idx] == 0) or ((dA[idx] > 359) and (dA[idx] < 361))
-
-        print "AzSkipCheck: deltaAz: %.1f deg, File: %s" % (dA[idx], lastFile)
-        self.passfailmsg("AzSkipCheck", passfail)
-        os.chdir(cwd)
+            passfail = (dA[idx] == 0) or ((dA[idx] > 358.5) and (dA[idx] < 361.5))
+        try:
+            print "AzSkipCheck: deltaAz: %.1f deg, File: %s" % (dA[idx], lastFile)
+            self.passfailmsg("AzSkipCheck", passfail)
+        except:
+            os.chdir(cwd)
 
     def getDevicesIP(self,verb=True):
         names = ['wvr','azel Arduino MEGA','pidTemp Arduino Due']
@@ -379,7 +380,7 @@ class reduc_wvr_pager(initialize):
         todaystr = datetime.now().strftime('%Y%m%d_%H')
         cwd = os.getcwd()
         os.chdir(self.dataDir)
-        fl=sort(glob.glob('%s*log*'%todaystr))
+        fl=sort(glob.glob('%s*slow*'%todaystr))
         lastFile= fl[-1]
         stat = os.stat(lastFile)
         delta_seconds = time.time()-stat.st_ctime
@@ -417,10 +418,10 @@ class reduc_wvr_pager(initialize):
         self.passfailmsg("Number of files in last hour: %d" % nfiles, passfail)
         return int(nfiles >= 5)
 
-    def checkFileSizeStatus(self, time=0, prefix='log',thres = 1e4, verb=True):
+    def checkFileSizeStatus(self, time=0, prefix='log',thres = 3e4, verb=True):
         """
         checks if file sizes are present in last day and all smaller or larger than thresh
-        Default is to check log files from today less than 10 000 bytes.
+        Default is to check log files from today less than 30 000 bytes.
         """
 
         fmt = "%Y%m%d*"
@@ -439,10 +440,16 @@ class reduc_wvr_pager(initialize):
         fail = 0
         for i in range(nfiles):
             if verb: print listing[i]
-            if int(listing[i].split()[4]) >= thres :
-                pas = pas+1
+            if thres == 0:
+                if int(listing[i].split()[4]) > thres :
+                    pas = pas+1
+                else:
+                    fail = fail+1
             else:
-                fail = fail+1
+                if int(listing[i].split()[4]) <= thres :
+                    pas = pas+1
+                else:
+                    fail = fail+1     
 
         print "%s \"%s\" files written in past day"%(nfiles, prefix)
 

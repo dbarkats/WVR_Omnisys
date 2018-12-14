@@ -5,16 +5,16 @@
 # in /data/status.
 
 # Customizable settings:
-
 DAQDIR="/data"
 DAQLOGIN="dbarkats@wvr1"
-DAQSTATUS="wvr_pipeline/wvrDailyCheck.py"
+DAQSTATUS="$HOME/wvr_pipeline/wvrDailyCheck.py"
 WEBDIR="bicep@bicep.usap.gov:/home/bicep/public_html/calibration/wvr/wvr1_status/"
 
 # Script actions below
 
 STATUSFILE="$(date --utc +"%Y%m%d_%H%M%S")_status.txt"
 cd "${DAQDIR}/status"
-ssh ${DAQLOGIN} "${DAQSTATUS}" > ${STATUSFILE} 2>&1
+ssh ${DAQLOGIN} "${DAQSTATUS}" > ${STATUSFILE} 2>&1   # when this script was run from wvr1a
+#"${DAQSTATUS}" > ${STATUSFILE} 2>&1   # when this script is on wvr1
 cp ${STATUSFILE} status.txt
 rsync -au status.txt ${STATUSFILE} "${WEBDIR}"

@@ -1,0 +1,71 @@
+AdaFruit_StepperTest_v5:
+
+This code controls the WVR stepper motor through the Adafruit Motor Shield v2.
+Code overview: 
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+- Include libraries
+- Create the motor shield object (AFMS) and connect the stepper motor
+- Create variables: 
+	* set limit switch and LED pins
+	* set stepper motor speed (1 rev/sec)
+	* initialize limit switch state variable
+- Set up stepper motor control (define functions used to step - in this case, "double")
+
+
+
+-----SETUP--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+- Initialize serial communication / clear serial monitor
+- Set serial timeout (to minimize wait time for serial commands)
+- Start AFMS and define stepper speed / acceleration
+- Initialize pins (LED output, limit switch input)
+
+
+
+-----LOOP--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-  Set LED to read limit switch state
+-  If serial is available, read it as "user input" (parseInt - only integers): 
+	A. if the user input is 0 (i.e. anything other than an integer), return the current position
+	B. otherwise, set the user input as an integer number of "steps"
+	   (initialize variables for "onlyhome", "badmove", and "irehomed" - to print feedback after attempted move)
+		1. if the steps are set to -9999, call Stepper.home to send the stepper to the zero position (onlyhome=1)
+		2. else, perform a regular move: 
+			+ if the limit switch is on, don't allow negative moves: reset steps to the current position if attempted (badmove=1)
+			+ else, move the stepper:
+				* set the target to the "steps" variable
+				* while there's still distance to go, incrementally run the stepper
+				* during each step, if the user types 'p', return the current position ("ReturnPos" function)
+				* during each step, check the limit switch - if pressed, stop the stepper and rehome, turn on LED. Else, turn off LED.
+		3. Release the stepper when the distance to go is zero
+		4. Print feedback based on move (e.g. if onlyhome==1, tell the user the stepper homed).  Print current position.
+ 		
+
+
+-----ReturnPos----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+- This function prints the current stepper position when the user types 'p'.
+
+
+----StepperHome----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+- This function homes the stepper motor: 
+- If the limit switch is pressed: 
+	* While the limit switch is on, move the motor forward (stepper.run) incrementally, and read the limit switch again.  (until off)
+	* then, turn of the LED, and continue:
+- While the limit switch is off:
+	* move in the negative direction incrementally (stepper.run), and read the limit switch state, until the switch is hit
+	* during each step, return the position if the user types 'p' (ReturnPos)
+- Set the current position to zero
+- Turn on the LED
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
